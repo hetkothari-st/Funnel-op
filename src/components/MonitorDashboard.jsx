@@ -113,7 +113,8 @@ const MonitorDashboard = ({
     onLayoutChange,
 
     depthEvents, // Low-latency event bus
-    isSidebarVisible // New prop
+    isSidebarVisible, // New prop
+    onToggleSidebar // New prop
 }) => {
     // --- Layout State is now controlled by Parent (App.jsx) ---
 
@@ -436,6 +437,8 @@ const MonitorDashboard = ({
                     // Pass down logic state for the config bar toggle
                     showAllPrices={showAllPrices}
                     setShowAllPrices={setShowAllPrices}
+                    isSidebarVisible={isSidebarVisible}
+                    onToggleSidebar={onToggleSidebar}
                 />
             ) : (
                 <VerticalLayout

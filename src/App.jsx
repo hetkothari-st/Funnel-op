@@ -157,15 +157,14 @@ const App = () => {
         ];
 
     // Sidebar Visibility Logic
-    // Original: Always Visible (w-56)
-    // Vertical: Controlled by sidebarCollapsed
-    const isSidebarVisible = currentLayout === 'original' || !sidebarCollapsed;
+    // Controlled by sidebarCollapsed in both modes
+    const isSidebarVisible = !sidebarCollapsed;
 
     return (
         <div className="min-h-screen bg-[#050505] text-white flex h-screen overflow-hidden font-sans selection:bg-blue-500/30">
 
-            {/* Sidebar Toggle (Only for Vertical Layout and when Sidebar is Hidden) */}
-            {currentLayout === 'vertical' && !isSidebarVisible && (
+            {/* Sidebar Toggle (Only when Sidebar is Hidden) */}
+            {!isSidebarVisible && (
                 <button
                     onClick={() => setSidebarCollapsed(false)}
                     className="fixed top-3 left-3 z-[60] p-2 bg-[#0a0a0e] border border-white/10 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all shadow-lg"
@@ -185,16 +184,14 @@ const App = () => {
                         <div className="flex-1 flex items-center justify-center py-1">
                             <img src={logo} alt="Logo" className="w-[150%] h-auto max-h-32 object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.5)] transition-transform hover:scale-105" />
                         </div>
-                        {/* Collapse Button (Only for Vertical Layout) */}
-                        {currentLayout === 'vertical' && (
-                            <button
-                                onClick={() => setSidebarCollapsed(true)}
-                                className="p-1.5 rounded text-white/30 hover:text-white hover:bg-white/10 transition-all ml-1 flex-shrink-0"
-                                title="Hide Sidebar"
-                            >
-                                <PanelLeftClose size={14} />
-                            </button>
-                        )}
+                        {/* Collapse Button */}
+                        <button
+                            onClick={() => setSidebarCollapsed(true)}
+                            className="p-1.5 rounded text-white/30 hover:text-white hover:bg-white/10 transition-all ml-1 flex-shrink-0"
+                            title="Hide Sidebar"
+                        >
+                            <PanelLeftClose size={14} />
+                        </button>
                     </div>
                     <div className="mt-1 flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-[10px] text-white/40">
@@ -367,6 +364,7 @@ const App = () => {
                         onLayoutChange={(mode) => setMonitorLayouts(prev => ({ ...prev, [m.id]: mode }))}
                         depthEvents={depthEvents.current} // Pass Event Bus
                         isSidebarVisible={isSidebarVisible} // Pass Sidebar State
+                        onToggleSidebar={setSidebarCollapsed} // Pass Sidebar Toggle
                     />
                 ))}
             </main>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Settings, Bell, Layers, Database, Activity, RefreshCw, ChevronDown, Check, Trash2, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Settings, Bell, Layers, Database, Activity, RefreshCw, ChevronDown, Check, Trash2, X, ArrowUp, ArrowDown, PanelLeftClose } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -26,7 +26,9 @@ const OriginalLayout = ({
     onUpdateTokenQty,
     onUpdateTokenStrike,
     showAllPrices,      // Lifted State
-    setShowAllPrices    // Lifted State Setter
+    setShowAllPrices,   // Lifted State Setter
+    isSidebarVisible,
+    onToggleSidebar
 }) => {
     // Local State
     const [config, setConfig] = useState({
@@ -65,7 +67,7 @@ const OriginalLayout = ({
         const onPointerMove = (moveEvent) => {
             const delta = startY - moveEvent.pageY;
             // Min height ~230px (allows ~2 alerts), max height 80% of viewport
-            const newHeight = Math.min(window.innerHeight * 0.8, Math.max(230, startHeight + delta));
+            const newHeight = Math.min(window.innerHeight * 0.8, Math.max(255, startHeight + delta));
             setLogsHeight(newHeight);
         };
 
@@ -218,7 +220,17 @@ const OriginalLayout = ({
         <div className="flex flex-col h-full overflow-hidden space-y-3">
             {/* 1. CONFIG BAR */}
             {visibleElements.config && (
-                <section className="glass-card p-2 flex flex-wrap items-center gap-3 flex-shrink-0 z-20 relative">
+                <section className={cn(
+                    "glass-card p-2 flex flex-wrap items-center gap-3 flex-shrink-0 z-20 relative transition-all duration-300",
+                    !isSidebarVisible && "pl-12"
+                )}>
+                    <button
+                        onClick={() => onToggleSidebar(true)}
+                        className="p-1.5 rounded text-white/30 hover:text-white hover:bg-white/10 transition-all mr-1"
+                        title="Hide Sidebar"
+                    >
+                        <PanelLeftClose size={14} />
+                    </button>
                     {/* Index */}
                     <div className="space-y-0.5">
                         <label className="text-[9px] uppercase text-white/40 block">Index</label>
