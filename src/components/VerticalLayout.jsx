@@ -41,8 +41,37 @@ const LogRow = memo(React.forwardRef(({ log, token, side }, ref) => {
         prev.token.quantity === next.token.quantity;
 });
 
-const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUpdateQty, onUpdateStrike, onUpdateType }) => {
+const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUpdateQty, onUpdateStrike, onUpdateType, onUpdateWidth }) => {
     const controls = useDragControls();
+    const columnWidth = token.width || 260;
+
+    // Resizing Logic
+    const handleResizeStart = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const startX = e.pageX;
+        const startWidth = columnWidth;
+
+        onDragStateChange(true); // Lock ATM logic/reordering
+
+        const handlePointerMove = (moveEvent) => {
+            const delta = moveEvent.pageX - startX;
+            const newWidth = Math.min(280, Math.max(200, startWidth + delta));
+            onUpdateWidth(newWidth);
+        };
+
+        const handlePointerUp = () => {
+            onDragStateChange(false);
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            document.body.style.cursor = 'default';
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        document.body.style.cursor = 'col-resize';
+    };
 
     // Derived All Strikes
     const allStrikes = useMemo(() => {
@@ -89,15 +118,17 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
     useEffect(() => {
         if (isEditingStrike) {
             setSearchTerm(""); // Reset search
-            // Focus input after render
+            // Tiny delay ensures DOM elements are rendered before we scroll/focus
             setTimeout(() => {
                 if (inputRef.current) inputRef.current.focus();
-            }, 0);
 
-            if (dropdownRef.current) {
-                const activeBtn = dropdownRef.current.querySelector('[data-active="true"]');
-                if (activeBtn) activeBtn.scrollIntoView({ block: 'center' });
-            }
+                if (dropdownRef.current) {
+                    const activeBtn = dropdownRef.current.querySelector('[data-active="true"]');
+                    if (activeBtn) {
+                        activeBtn.scrollIntoView({ block: 'center', behavior: 'instant' });
+                    }
+                }
+            }, 50);
         }
     }, [isEditingStrike]);
 
@@ -108,11 +139,18 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
             dragControls={controls}
             onDragStart={() => onDragStateChange(true)}
             onDragEnd={() => onDragStateChange(false)}
+            whileDrag={{ scale: 1.02, zIndex: 50 }}
+            style={{ width: columnWidth }}
             className={cn(
-                "flex-1 min-w-[200px] max-w-[280px] h-full flex flex-col bg-[#0f1115] border rounded-lg shadow-lg transition-all duration-500",
+                "flex-shrink-0 h-full flex flex-col bg-[#0f1115] border rounded-lg shadow-xl transition-[border-color,box-shadow] duration-500 relative",
                 isAtm ? "border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.15)] z-10" : "border-white/10"
             )}
         >
+            {/* Resize Handle */}
+            <div
+                className="absolute right-0 top-0 w-1.5 h-full cursor-col-resize hover:bg-blue-500/20 z-50 transition-colors"
+                onPointerDown={handleResizeStart}
+            />
             {/* Column Header */}
             <div className="p-2 border-b border-white/10 space-y-2 bg-[#15171c]">
                 <div className="flex items-center justify-between">
@@ -131,11 +169,19 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
                 {/* Controls Row */}
                 <div className="flex items-center justify-between h-7 px-1">
                     {/* Strike */}
-                    <div className="relative" ref={containerRef}>
+                    <div className="relative flex items-center h-full" ref={containerRef}>
+                        {/* Ghost/Shadow Strike Text */}
+                        <div className={cn(
+                            "absolute left-0 top-1/2 -translate-y-1/2 text-5xl font-black tracking-tighter opacity-[0.05] select-none pointer-events-none transition-colors",
+                            token.type === 'CE' ? "text-cyan-500" : "text-purple-500"
+                        )}>
+                            {token.strike}
+                        </div>
+
                         <button
                             onClick={() => setIsEditingStrike(!isEditingStrike)}
                             className={cn(
-                                "bg-transparent border-none p-0 flex items-center gap-0.5 transition-colors",
+                                "relative z-10 bg-transparent border-none p-0 flex items-center gap-0.5 transition-colors",
                                 token.type === 'CE' ? "text-cyan-400 hover:text-cyan-300" : "text-purple-400 hover:text-purple-300"
                             )}
                         >
@@ -246,6 +292,7 @@ const VerticalLayout = ({
     onUpdateTokenQty,
     onUpdateTokenStrike,
     onUpdateTokenType,
+    onUpdateTokenWidth,
     onClearTokens,
     visibleElements,
 
@@ -257,12 +304,13 @@ const VerticalLayout = ({
     const [globalIndex, setGlobalIndex] = useState('NIFTY');
     const [globalExpiry, setGlobalExpiry] = useState('');
     const [atmStrike, setAtmStrike] = useState(null);
-    const [isManualDragging, setIsManualDragging] = useState(false);
+    const isDraggingRef = useRef(false);
 
     // --- Spot Price & ATM Logic ---
     useEffect(() => {
         // Prevent auto-reorder while user is manually dragging
-        if (isManualDragging) return;
+        // Using ref check to avoid the "lock re-render" fighting the drag start
+        if (isDraggingRef.current) return;
 
         // 1. Get Spot Token ID based on Global Index
         let spotTokenId = null;
@@ -309,7 +357,7 @@ const VerticalLayout = ({
             const newOrder = [atmToken, ...currentTokens];
             onReorderTokens(newOrder); // This updates the parent state
         }
-    }, [depthData, globalIndex, monitoredTokens, onReorderTokens, atmStrike, isManualDragging]);
+    }, [depthData, globalIndex, monitoredTokens, onReorderTokens, atmStrike]);
 
 
     const availableExpiries = useMemo(() => {
@@ -401,12 +449,12 @@ const VerticalLayout = ({
             )}
 
             {/* Main Content with Reorder.Group */}
-            <div className="flex-1 overflow-x-auto overflow-y-hidden p-2">
+            <div className="flex-1 overflow-x-auto overflow-y-hidden p-2 relative">
                 <Reorder.Group
                     axis="x"
                     values={monitoredTokens}
                     onReorder={onReorderTokens}
-                    className="flex h-full gap-2 w-full min-w-max" // min-w-max crucial for horizontal layout
+                    className="flex h-full gap-4 w-full min-w-max pb-4" // Added gap and pb for comfort
                 >
                     {monitoredTokens.map(token => {
                         const isAtm = token.index === globalIndex && parseFloat(token.strike) === atmStrike;
@@ -415,7 +463,7 @@ const VerticalLayout = ({
                                 key={token.id}
                                 token={token}
                                 isAtm={isAtm}
-                                onDragStateChange={setIsManualDragging}
+                                onDragStateChange={(val) => (isDraggingRef.current = val)}
                                 logs={logs.filter(l => l.tokenId === token.id || l.tokenId === token.tkn)}
                                 onRemove={() => onRemoveToken(token.id)}
                                 onUpdateQty={(q) => onUpdateTokenQty(token.id, q)}
@@ -445,6 +493,7 @@ const VerticalLayout = ({
                                         onUpdateTokenType(token.id, newType, contract.t, contract.ns);
                                     }
                                 }}
+                                onUpdateWidth={(w) => onUpdateTokenWidth(token.id, w)}
                             />
                         );
                     })}

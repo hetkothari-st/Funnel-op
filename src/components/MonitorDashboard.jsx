@@ -410,6 +410,12 @@ const MonitorDashboard = ({
         ));
     };
 
+    const handleUpdateTokenWidth = (tokenId, newWidth) => {
+        setMonitoredTokens(prev => prev.map(m =>
+            m.id === tokenId ? { ...m, width: newWidth } : m
+        ));
+    };
+
 
     return (
         <div className={cn("flex flex-col h-full overflow-hidden relative", isActive ? "flex" : "hidden")}>
@@ -442,6 +448,7 @@ const MonitorDashboard = ({
                     onUpdateTokenQty={handleUpdateTokenQty}
                     onUpdateTokenStrike={handleUpdateTokenStrike}
                     onUpdateTokenType={handleUpdateTokenType}
+                    onUpdateTokenWidth={handleUpdateTokenWidth}
                     showAllPrices={showAllPrices}
                     setShowAllPrices={setShowAllPrices}
                     onReorderTokens={setMonitoredTokens} // Pass drag-and-drop handler

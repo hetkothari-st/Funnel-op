@@ -49,6 +49,36 @@ const OriginalLayout = ({
         return saved ? JSON.parse(saved) : false;
     });
     const [timeTick, setTimeTick] = useState(0);
+    const [logsHeight, setLogsHeight] = useState(350); // Default height in pixels
+
+    // Reset height when log visibility toggles
+    useEffect(() => {
+        setLogsHeight(350);
+    }, [visibleElements.logs]);
+
+    // Resizing Logic for Alerts
+    const handleResizeStart = (e) => {
+        e.preventDefault();
+        const startY = e.pageY;
+        const startHeight = logsHeight;
+
+        const onPointerMove = (moveEvent) => {
+            const delta = startY - moveEvent.pageY;
+            // Min height ~230px (allows ~2 alerts), max height 80% of viewport
+            const newHeight = Math.min(window.innerHeight * 0.8, Math.max(230, startHeight + delta));
+            setLogsHeight(newHeight);
+        };
+
+        const onPointerUp = () => {
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            document.body.style.cursor = 'default';
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        document.body.style.cursor = 'ns-resize';
+    };
 
     useEffect(() => {
         localStorage.setItem('mt_show_relative_timer_original', JSON.stringify(showRelativeTimer));
@@ -299,8 +329,8 @@ const OriginalLayout = ({
 
             {/* 2. MULTI-STRIKE DEPTHS GRID */}
             <div className={cn(
-                "overflow-y-auto px-1 transition-all duration-300",
-                visibleElements.logs ? "flex-shrink-0 max-h-[40vh]" : "flex-1 h-full"
+                "overflow-y-auto px-1 transition-all duration-300 flex-1",
+                visibleElements.logs ? "min-h-0" : "h-full"
             )}>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {monitoredTokens.map((item, idx) => {
@@ -439,7 +469,15 @@ const OriginalLayout = ({
 
             {/* 3. CONSOLIDATED LOGS */}
             {visibleElements.logs && (
-                <div className="glass-card flex-1 min-h-0 flex flex-col p-0 overflow-hidden">
+                <div
+                    className="glass-card flex-shrink-0 flex flex-col p-0 overflow-hidden relative"
+                    style={{ height: logsHeight }}
+                >
+                    {/* Resize Handle */}
+                    <div
+                        className="absolute top-0 left-0 w-full h-1 cursor-ns-resize hover:bg-blue-500/30 z-50 transition-colors"
+                        onPointerDown={handleResizeStart}
+                    />
                     <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between bg-white/5">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
