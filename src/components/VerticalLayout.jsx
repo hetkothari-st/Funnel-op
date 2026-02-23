@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, memo } from 'react';
-import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser } from 'lucide-react';
+import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser, FlaskConical } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
@@ -11,39 +11,40 @@ function cn(...inputs) {
 
 const LogRow = memo(React.forwardRef(({ log, token, side }, ref) => {
     const isBuy = side === 'buy';
+    const timeStr = new Date(log.timestamp).toLocaleTimeString('en-GB', { hour12: false });
 
     return (
         <motion.div
-            ref={ref} // Forward the ref to the motion component
-            layout // Smooth layout transitions
+            ref={ref}
+            layout
             initial={{ opacity: 0, x: isBuy ? -10 : 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center justify-between text-[13px] leading-tight px-1 rounded hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+            className="flex items-center gap-0.5 text-[13px] leading-tight px-1 py-0.5 rounded hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
         >
             {isBuy ? (
                 <>
-                    <span className="font-mono font-bold text-emerald-400 text-base">{log.observedQty}</span>
-                    <span className="text-white/70 font-mono text-[11px]">{Number(log.price).toFixed(2)}</span>
+                    <span className="text-[9px] text-white/20 font-mono w-[40px] shrink-0">{timeStr}</span>
+                    <span className="font-mono font-bold text-emerald-400 text-[12px] flex-1 text-center">{log.observedQty}</span>
+                    <span className="text-white/50 font-mono text-[10px] w-[36px] shrink-0 text-right">{Number(log.price).toFixed(2)}</span>
                 </>
             ) : (
                 <>
-                    <span className="text-white/70 font-mono text-[11px]">{Number(log.price).toFixed(2)}</span>
-                    <span className="font-mono font-bold text-red-400 text-base">{log.observedQty}</span>
+                    <span className="text-white/50 font-mono text-[10px] w-[36px] shrink-0 text-left">{Number(log.price).toFixed(2)}</span>
+                    <span className="font-mono font-bold text-red-400 text-[12px] flex-1 text-center">{log.observedQty}</span>
+                    <span className="text-[9px] text-white/20 font-mono w-[40px] shrink-0 text-right">{timeStr}</span>
                 </>
             )}
         </motion.div>
     );
 }), (prev, next) => {
-    // Custom comparison for performance
-    return prev.log.id === next.log.id &&
-        prev.token.quantity === next.token.quantity;
+    return prev.log.id === next.log.id;
 });
 
 const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUpdateQty, onUpdateStrike, onUpdateType, onUpdateWidth, onClearLogs }) => {
     const controls = useDragControls();
-    const columnWidth = token.width || 280;
+    const columnWidth = token.width || 300;
 
     // Resizing Logic
     const handleResizeStart = (e) => {
@@ -57,7 +58,7 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
 
         const handlePointerMove = (moveEvent) => {
             const delta = moveEvent.pageX - startX;
-            const newWidth = Math.min(280, Math.max(200, startWidth + delta));
+            const newWidth = Math.min(320, Math.max(280, startWidth + delta));
             onUpdateWidth(newWidth);
         };
 
@@ -140,7 +141,11 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
             onDragStart={() => onDragStateChange(true)}
             onDragEnd={() => onDragStateChange(false)}
             whileDrag={{ scale: 1.02, zIndex: 50 }}
-            style={{ flex: `1 1 ${columnWidth}px`, maxWidth: 280, minWidth: 200 }}
+            style={{
+                flex: `0 0 ${columnWidth}px`, // Strictly respect the width to prevent overlap
+                maxWidth: 320,
+                minWidth: 280
+            }}
             className={cn(
                 "h-full flex flex-col bg-[#0f1115] border rounded-lg shadow-xl transition-[border-color,box-shadow,flex-basis] duration-500 relative",
                 isAtm ? "border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.15)] z-10" : "border-white/10"
@@ -313,7 +318,8 @@ const VerticalLayout = ({
     onReorderTokens, // Destructure new prop
     isSidebarVisible, // New prop
     depthData, // Need depthData to get Spot Prices
-    onClearLogs // New prop
+    onClearLogs, // New prop
+    onInjectMockData // New prop
 }) => {
     // --- Top Bar State (Unchanged) ---
     const [globalIndex, setGlobalIndex] = useState('NIFTY');
@@ -466,6 +472,9 @@ const VerticalLayout = ({
                     >
                         <Plus size={14} /> Add Column
                     </button>
+                    <button onClick={onInjectMockData} className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2">
+                        <FlaskConical size={10} /> Mock
+                    </button>
                     <button onClick={onClearTokens} className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2">
                         <Trash2 size={10} /> Clear
                     </button>
@@ -478,7 +487,7 @@ const VerticalLayout = ({
                     axis="x"
                     values={monitoredTokens}
                     onReorder={onReorderTokens}
-                    className="flex h-full gap-4 w-full pb-4" // Removed min-w-max to allow flex shrinking
+                    className="flex h-full gap-4 pb-4 w-fit min-w-full" // Use w-fit to ensure scrollbar triggers correctly
                 >
                     {monitoredTokens.map(token => {
                         const isAtm = token.index === globalIndex && parseFloat(token.strike) === atmStrike;
