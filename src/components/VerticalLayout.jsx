@@ -12,6 +12,7 @@ function cn(...inputs) {
 const LogRow = memo(React.forwardRef(({ log, token, side }, ref) => {
     const isBuy = side === 'buy';
     const timeStr = new Date(log.timestamp).toLocaleTimeString('en-GB', { hour12: false });
+    const isHighQty = log.observedQty > 90000;
 
     return (
         <motion.div
@@ -25,15 +26,21 @@ const LogRow = memo(React.forwardRef(({ log, token, side }, ref) => {
         >
             {isBuy ? (
                 <>
-                    <span className="text-[9px] text-white/20 font-mono w-[40px] shrink-0">{timeStr}</span>
-                    <span className="font-mono font-bold text-emerald-400 text-[12px] flex-1 text-center">{log.observedQty}</span>
-                    <span className="text-white/50 font-mono text-[10px] w-[36px] shrink-0 text-right">{Number(log.price).toFixed(2)}</span>
+                    <span className="text-[9px] text-white/40 font-mono w-[40px] shrink-0">{timeStr}</span>
+                    <span className={cn(
+                        "font-mono flex-1 text-center transition-all duration-300",
+                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "text-emerald-400 font-bold text-[12px]"
+                    )}>{log.observedQty}</span>
+                    <span className="text-white/60 font-mono text-[10px] w-[36px] shrink-0 text-right">{Number(log.price).toFixed(2)}</span>
                 </>
             ) : (
                 <>
-                    <span className="text-white/50 font-mono text-[10px] w-[36px] shrink-0 text-left">{Number(log.price).toFixed(2)}</span>
-                    <span className="font-mono font-bold text-red-400 text-[12px] flex-1 text-center">{log.observedQty}</span>
-                    <span className="text-[9px] text-white/20 font-mono w-[40px] shrink-0 text-right">{timeStr}</span>
+                    <span className="text-white/60 font-mono text-[10px] w-[36px] shrink-0 text-left">{Number(log.price).toFixed(2)}</span>
+                    <span className={cn(
+                        "font-mono flex-1 text-center transition-all duration-300",
+                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "text-red-400 font-bold text-[12px]"
+                    )}>{log.observedQty}</span>
+                    <span className="text-[9px] text-white/40 font-mono w-[40px] shrink-0 text-right">{timeStr}</span>
                 </>
             )}
         </motion.div>

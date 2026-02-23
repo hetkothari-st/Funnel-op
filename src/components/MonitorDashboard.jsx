@@ -393,7 +393,7 @@ const MonitorDashboard = ({
         tokensToMock.forEach(token => {
             for (let i = 0; i < 5; i++) {
                 const side = Math.random() > 0.5 ? 'buy' : 'sell';
-                const qty = Math.floor(Math.random() * 50000) + 5000;
+                const qty = Math.floor(Math.random() * 100000) + 50000;
                 const price = Math.random() * 200 + 50;
                 const logId = `${token.id}-${side}-${qty}-${now - i * 1000}-${Math.random().toString(36).substr(2, 9)}`;
 
