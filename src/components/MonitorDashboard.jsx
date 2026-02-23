@@ -374,7 +374,11 @@ const MonitorDashboard = ({
         setLogs(prev => prev.filter(l => l.tokenId !== tokenId)); // Clean up logs for removed token
     };
 
-    const handleClearTokens = () => {
+    const handleClearLogs = useCallback((tokenId, side) => {
+        setLogs(prev => prev.filter(log => !(log.tokenId === tokenId && log.side === side)));
+    }, []);
+
+    const handleClearAllTokens = () => {
         setMonitoredTokens([]);
         setLogs([]);
     };
@@ -430,7 +434,7 @@ const MonitorDashboard = ({
                     logs={logs}
                     onAddTokens={handleAddTokens}
                     onRemoveToken={handleRemoveToken}
-                    onClearTokens={handleClearTokens}
+                    onClearTokens={handleClearAllTokens}
                     onUpdateTokenQty={handleUpdateTokenQty}
                     onUpdateTokenStrike={handleUpdateTokenStrike}
                     onUpdateTokenType={handleUpdateTokenType}
@@ -447,11 +451,12 @@ const MonitorDashboard = ({
                     logs={logs}
                     onAddTokens={handleAddTokens}
                     onRemoveToken={handleRemoveToken}
-                    onClearTokens={handleClearTokens}
+                    onClearTokens={handleClearAllTokens}
                     onUpdateTokenQty={handleUpdateTokenQty}
                     onUpdateTokenStrike={handleUpdateTokenStrike}
                     onUpdateTokenType={handleUpdateTokenType}
                     onUpdateTokenWidth={handleUpdateTokenWidth}
+                    onClearLogs={handleClearLogs}
                     showAllPrices={showAllPrices}
                     setShowAllPrices={setShowAllPrices}
                     onReorderTokens={setMonitoredTokens} // Pass drag-and-drop handler

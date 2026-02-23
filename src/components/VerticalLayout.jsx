@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, memo } from 'react';
-import { Plus, Trash2, X, ChevronDown, Check, GripVertical } from 'lucide-react';
+import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
@@ -41,9 +41,9 @@ const LogRow = memo(React.forwardRef(({ log, token, side }, ref) => {
         prev.token.quantity === next.token.quantity;
 });
 
-const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUpdateQty, onUpdateStrike, onUpdateType, onUpdateWidth }) => {
+const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUpdateQty, onUpdateStrike, onUpdateType, onUpdateWidth, onClearLogs }) => {
     const controls = useDragControls();
-    const columnWidth = token.width || 260;
+    const columnWidth = token.width || 280;
 
     // Resizing Logic
     const handleResizeStart = (e) => {
@@ -140,9 +140,9 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
             onDragStart={() => onDragStateChange(true)}
             onDragEnd={() => onDragStateChange(false)}
             whileDrag={{ scale: 1.02, zIndex: 50 }}
-            style={{ width: columnWidth }}
+            style={{ flex: `1 1 ${columnWidth}px`, maxWidth: 280, minWidth: 200 }}
             className={cn(
-                "flex-shrink-0 h-full flex flex-col bg-[#0f1115] border rounded-lg shadow-xl transition-[border-color,box-shadow] duration-500 relative",
+                "h-full flex flex-col bg-[#0f1115] border rounded-lg shadow-xl transition-[border-color,box-shadow,flex-basis] duration-500 relative",
                 isAtm ? "border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.15)] z-10" : "border-white/10"
             )}
         >
@@ -253,9 +253,16 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
             {/* Split Columns (Buy | Sell) */}
             <div className="flex-1 min-h-0 flex divide-x divide-white/10">
                 {/* Buy Column */}
-                <div className="flex-1 flex flex-col min-w-0">
-                    <div className="p-1 border-b border-white/5 text-center">
+                <div className="flex-1 flex flex-col min-w-0 group/buy">
+                    <div className="p-1 border-b border-white/5 flex items-center justify-center gap-2 relative">
                         <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider opacity-80">Buy</span>
+                        <button
+                            onClick={() => onClearLogs(token.id, 'buy')}
+                            className="opacity-30 hover:opacity-100 transition-opacity absolute right-1 p-0.5 hover:text-emerald-400 text-white/50"
+                            title="Clear Buy Logs"
+                        >
+                            <Eraser size={10} />
+                        </button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-1 scrollbar-thin [&::-webkit-scrollbar]:w-1">
                         <AnimatePresence initial={false} mode='popLayout'>
@@ -267,9 +274,16 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
                 </div>
 
                 {/* Sell Column */}
-                <div className="flex-1 flex flex-col min-w-0">
-                    <div className="p-1 border-b border-white/5 text-center">
+                <div className="flex-1 flex flex-col min-w-0 group/sell">
+                    <div className="p-1 border-b border-white/5 flex items-center justify-center gap-2 relative">
                         <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider opacity-80">Sell</span>
+                        <button
+                            onClick={() => onClearLogs(token.id, 'sell')}
+                            className="opacity-30 hover:opacity-100 transition-opacity absolute right-1 p-0.5 hover:text-red-400 text-white/50"
+                            title="Clear Sell Logs"
+                        >
+                            <Eraser size={10} />
+                        </button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-1 scrollbar-thin [&::-webkit-scrollbar]:w-1">
                         <AnimatePresence initial={false} mode='popLayout'>
@@ -298,7 +312,8 @@ const VerticalLayout = ({
 
     onReorderTokens, // Destructure new prop
     isSidebarVisible, // New prop
-    depthData // Need depthData to get Spot Prices
+    depthData, // Need depthData to get Spot Prices
+    onClearLogs // New prop
 }) => {
     // --- Top Bar State (Unchanged) ---
     const [globalIndex, setGlobalIndex] = useState('NIFTY');
@@ -345,17 +360,26 @@ const VerticalLayout = ({
             setAtmStrike(calculatedAtm);
         }
 
-        // 5. Auto-Reorder: Ensure ATM column is at front whenever tokens or ATM changes
+        // 5. Auto-Reorder: Ensure ATM columns (CE & PE) are at front whenever tokens or ATM changes
         const currentTokens = [...monitoredTokens];
-        const atmIndex = currentTokens.findIndex(t =>
+        const atmTokens = currentTokens.filter(t =>
             t.index === globalIndex &&
             parseFloat(t.strike) === calculatedAtm
         );
 
-        if (atmIndex > 0) { // If found and not already first
-            const [atmToken] = currentTokens.splice(atmIndex, 1);
-            const newOrder = [atmToken, ...currentTokens];
-            onReorderTokens(newOrder); // This updates the parent state
+        if (atmTokens.length > 0) {
+            // Check if all ATM tokens are already grouped at the very front
+            const firstNIds = monitoredTokens.slice(0, atmTokens.length).map(t => t.id);
+            const allAtFront = atmTokens.every(t => firstNIds.includes(t.id));
+
+            if (!allAtFront) {
+                const nonAtmTokens = currentTokens.filter(t =>
+                    !(t.index === globalIndex && parseFloat(t.strike) === calculatedAtm)
+                );
+                // Maintain relative order of ATM tokens (CE/PE) as they were added
+                const newOrder = [...atmTokens, ...nonAtmTokens];
+                onReorderTokens(newOrder); // This updates the parent state
+            }
         }
     }, [depthData, globalIndex, monitoredTokens, onReorderTokens, atmStrike]);
 
@@ -454,7 +478,7 @@ const VerticalLayout = ({
                     axis="x"
                     values={monitoredTokens}
                     onReorder={onReorderTokens}
-                    className="flex h-full gap-4 w-full min-w-max pb-4" // Added gap and pb for comfort
+                    className="flex h-full gap-4 w-full pb-4" // Removed min-w-max to allow flex shrinking
                 >
                     {monitoredTokens.map(token => {
                         const isAtm = token.index === globalIndex && parseFloat(token.strike) === atmStrike;
@@ -494,6 +518,7 @@ const VerticalLayout = ({
                                     }
                                 }}
                                 onUpdateWidth={(w) => onUpdateTokenWidth(token.id, w)}
+                                onClearLogs={onClearLogs}
                             />
                         );
                     })}
