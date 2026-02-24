@@ -383,33 +383,6 @@ const MonitorDashboard = ({
         setLogs([]);
     };
 
-    const handleInjectMockData = () => {
-        const tokensToMock = monitoredTokens.filter(t => t.strike === "25550" || t.strike === "25550.00000");
-        if (tokensToMock.length === 0) return;
-
-        const newLogs = [];
-        const now = Date.now();
-
-        tokensToMock.forEach(token => {
-            for (let i = 0; i < 5; i++) {
-                const side = Math.random() > 0.5 ? 'buy' : 'sell';
-                const qty = Math.floor(Math.random() * 100000) + 50000;
-                const price = Math.random() * 200 + 50;
-                const logId = `${token.id}-${side}-${qty}-${now - i * 1000}-${Math.random().toString(36).substr(2, 9)}`;
-
-                newLogs.push({
-                    id: logId,
-                    tokenId: token.id,
-                    side,
-                    observedQty: qty,
-                    price: price.toFixed(2),
-                    timestamp: now - i * 1000
-                });
-            }
-        });
-
-        setLogs(prev => [...newLogs, ...prev].slice(0, 1000));
-    };
 
     const handleUpdateTokenQty = (tokenId, newQty) => {
         setMonitoredTokens(prev => prev.map(m =>
@@ -485,7 +458,6 @@ const MonitorDashboard = ({
                     onUpdateTokenType={handleUpdateTokenType}
                     onUpdateTokenWidth={handleUpdateTokenWidth}
                     onClearLogs={handleClearLogs}
-                    onInjectMockData={handleInjectMockData}
                     showAllPrices={showAllPrices}
                     setShowAllPrices={setShowAllPrices}
                     onReorderTokens={setMonitoredTokens} // Pass drag-and-drop handler

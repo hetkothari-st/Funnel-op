@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, memo } from 'react';
-import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser, FlaskConical } from 'lucide-react';
+import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
@@ -325,8 +325,7 @@ const VerticalLayout = ({
     onReorderTokens, // Destructure new prop
     isSidebarVisible, // New prop
     depthData, // Need depthData to get Spot Prices
-    onClearLogs, // New prop
-    onInjectMockData // New prop
+    onClearLogs // New prop
 }) => {
     // --- Top Bar State (Unchanged) ---
     const [globalIndex, setGlobalIndex] = useState('NIFTY');
@@ -478,9 +477,6 @@ const VerticalLayout = ({
                         className="ml-auto bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 transition-colors"
                     >
                         <Plus size={14} /> Add Column
-                    </button>
-                    <button onClick={onInjectMockData} className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2">
-                        <FlaskConical size={10} /> Mock
                     </button>
                     <button onClick={onClearTokens} className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2">
                         <Trash2 size={10} /> Clear
