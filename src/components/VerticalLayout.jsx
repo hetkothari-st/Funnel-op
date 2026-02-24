@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, memo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
 import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -18,7 +18,7 @@ const LogRow = memo(React.forwardRef(({ log, token, side, timeTick }, ref) => {
     const secs = elapsed % 60;
     const timerStr = `(${mins}:${secs.toString().padStart(2, '0')})`;
 
-    const isHighQty = log.observedQty > 90000;
+    const isHighQty = log.observedQty >= 100000;
 
     return (
         <motion.div
@@ -28,25 +28,35 @@ const LogRow = memo(React.forwardRef(({ log, token, side, timeTick }, ref) => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center gap-0.5 text-[13px] leading-tight px-1 py-0.5 rounded hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+            className="flex items-center justify-between gap-1 text-[13px] leading-tight px-1 py-0.5 rounded hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 overflow-hidden"
         >
             {isBuy ? (
                 <>
-                    <span className="text-[10px] text-blue-400 font-bold font-mono w-[38px] shrink-0">{timerStr}</span>
+                    <span className="text-[10px] text-blue-400 font-bold font-mono whitespace-nowrap shrink-0">{timerStr}</span>
                     <span className={cn(
-                        "font-mono flex-1 text-center transition-all duration-300",
-                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "text-emerald-400 font-bold text-[12px]"
+                        "font-mono flex-1 text-center whitespace-nowrap min-w-0 truncate transition-all duration-300",
+                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] tracking-tighter" : "text-emerald-400 font-bold text-[12px]"
                     )}>{log.observedQty}</span>
-                    <span className="text-white/60 font-mono text-[10px] w-[36px] shrink-0 text-right">{Number(log.price).toFixed(2)}</span>
+                    <span className={cn(
+                        "font-mono whitespace-nowrap shrink-0 text-right transition-all duration-300",
+                        isHighQty
+                            ? "text-violet-400 font-black text-[12.5px] drop-shadow-[0_0_10px_rgba(167,139,250,0.6)]"
+                            : "text-slate-300 font-bold text-[10.5px] drop-shadow-[0_0_4px_rgba(255,255,255,0.1)]"
+                    )}>{Number(log.price).toFixed(2)}</span>
                 </>
             ) : (
                 <>
-                    <span className="text-white/60 font-mono text-[10px] w-[36px] shrink-0 text-left">{Number(log.price).toFixed(2)}</span>
                     <span className={cn(
-                        "font-mono flex-1 text-center transition-all duration-300",
-                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "text-red-400 font-bold text-[12px]"
+                        "font-mono whitespace-nowrap shrink-0 text-left transition-all duration-300",
+                        isHighQty
+                            ? "text-violet-400 font-black text-[12.5px] drop-shadow-[0_0_10px_rgba(167,139,250,0.6)]"
+                            : "text-slate-300 font-bold text-[10.5px] drop-shadow-[0_0_4px_rgba(255,255,255,0.1)]"
+                    )}>{Number(log.price).toFixed(2)}</span>
+                    <span className={cn(
+                        "font-mono flex-1 text-center whitespace-nowrap min-w-0 truncate transition-all duration-300",
+                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] tracking-tighter" : "text-red-400 font-bold text-[12px]"
                     )}>{log.observedQty}</span>
-                    <span className="text-[10px] text-blue-400 font-bold font-mono w-[38px] shrink-0 text-right">{timerStr}</span>
+                    <span className="text-[10px] text-blue-400 font-bold font-mono whitespace-nowrap shrink-0 text-right">{timerStr}</span>
                 </>
             )}
         </motion.div>
@@ -56,9 +66,31 @@ const LogRow = memo(React.forwardRef(({ log, token, side, timeTick }, ref) => {
     return prev.log.id === next.log.id && prev.timeTick === next.timeTick;
 });
 
-const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUpdateQty, onUpdateStrike, onUpdateType, onUpdateWidth, onClearLogs, timeTick }) => {
+const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUpdateQty, onUpdateStrike, onUpdateType, onUpdateWidth, onClearLogs, timeTick, showNetQtyBreakdown }) => {
     const controls = useDragControls();
     const columnWidth = token.width || 300;
+
+    // Net Quantity Calculation Logic
+    const calculateNetQty = useCallback((side) => {
+        const sideLogs = logs.filter(l => l.side === side && l.observedQty >= 100000);
+        const maxQtyPerPrice = {};
+        sideLogs.forEach(log => {
+            const price = Number(log.price).toFixed(2);
+            if (!maxQtyPerPrice[price] || log.observedQty > maxQtyPerPrice[price]) {
+                maxQtyPerPrice[price] = log.observedQty;
+            }
+        });
+
+        const breakdown = Object.entries(maxQtyPerPrice)
+            .map(([price, qty]) => ({ price, qty }))
+            .sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+
+        const total = Object.values(maxQtyPerPrice).reduce((sum, qty) => sum + qty, 0);
+        return { total, breakdown };
+    }, [logs]);
+
+    const netBuyData = useMemo(() => calculateNetQty('buy'), [calculateNetQty]);
+    const netSellData = useMemo(() => calculateNetQty('sell'), [calculateNetQty]);
 
     // Resizing Logic
     const handleResizeStart = (e) => {
@@ -290,6 +322,40 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
                             ))}
                         </AnimatePresence>
                     </div>
+                    {/* Net Qty Footer */}
+                    <div className={cn(
+                        "p-1 px-2 border-t border-white/10 bg-white/[0.02] transition-all",
+                        showNetQtyBreakdown ? "min-h-[60px] max-h-[120px] overflow-y-auto scrollbar-none" : "h-[28px]"
+                    )}>
+                        {!showNetQtyBreakdown ? (
+                            <div className="flex items-center justify-between h-full">
+                                <span className="text-[9px] font-bold text-white/30 uppercase">Net Qty</span>
+                                <span className={cn(
+                                    "font-mono text-[13px] font-black tracking-tight",
+                                    netBuyData.total > 0 ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]" : "text-white/20"
+                                )}>
+                                    {netBuyData.total.toLocaleString()}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="space-y-0.5">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-0.5 mb-1">
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-tighter">Net Breakdown (Buy)</span>
+                                    <span className="text-[10px] font-black text-emerald-400/80">{netBuyData.total.toLocaleString()}</span>
+                                </div>
+                                {netBuyData.breakdown.length === 0 ? (
+                                    <div className="text-[10px] text-white/10 text-center py-2 italic font-medium">No 1L+ Pulses</div>
+                                ) : (
+                                    netBuyData.breakdown.map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between text-[11px] font-mono group/item">
+                                            <span className="text-white/40 group-hover/item:text-white/60 transition-colors">{item.price}</span>
+                                            <span className="text-emerald-400/90 font-bold">{item.qty.toLocaleString()}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Sell Column */}
@@ -311,9 +377,44 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
                             ))}
                         </AnimatePresence>
                     </div>
+                    {/* Net Qty Footer */}
+                    <div className={cn(
+                        "p-1 px-2 border-t border-white/10 bg-white/[0.02] transition-all",
+                        showNetQtyBreakdown ? "min-h-[60px] max-h-[120px] overflow-y-auto scrollbar-none" : "h-[28px]"
+                    )}>
+                        {!showNetQtyBreakdown ? (
+                            <div className="flex items-center justify-between h-full">
+                                <span className="text-[9px] font-bold text-white/30 uppercase">Net Qty</span>
+                                <span className={cn(
+                                    "font-mono text-[13px] font-black tracking-tight",
+                                    netSellData.total > 0 ? "text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]" : "text-white/20"
+                                )}>
+                                    {netSellData.total.toLocaleString()}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="space-y-0.5">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-0.5 mb-1">
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-tighter">Net Breakdown (Sell)</span>
+                                    <span className="text-[10px] font-black text-red-400/80">{netSellData.total.toLocaleString()}</span>
+                                </div>
+                                {netSellData.breakdown.length === 0 ? (
+                                    <div className="text-[10px] text-white/10 text-center py-2 italic font-medium">No 1L+ Pulses</div>
+                                ) : (
+                                    netSellData.breakdown.map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between text-[11px] font-mono group/item">
+                                            <span className="text-white/40 group-hover/item:text-white/60 transition-colors">{item.price}</span>
+                                            <span className="text-red-400/90 font-bold">{item.qty.toLocaleString()}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </Reorder.Item>
+
     );
 };
 
@@ -339,6 +440,7 @@ const VerticalLayout = ({
     const [globalExpiry, setGlobalExpiry] = useState('');
     const [atmStrike, setAtmStrike] = useState(null);
     const [timeTick, setTimeTick] = useState(0);
+    const [showNetQtyBreakdown, setShowNetQtyBreakdown] = useState(false);
     const isDraggingRef = useRef(false);
 
     // Live Timer Tick
@@ -492,6 +594,23 @@ const VerticalLayout = ({
                     >
                         <Plus size={14} /> Add Column
                     </button>
+
+                    <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded border border-white/10 h-7">
+                        <label className="text-[10px] text-white/40 uppercase font-black tracking-tight">Breakdown</label>
+                        <button
+                            onClick={() => setShowNetQtyBreakdown(!showNetQtyBreakdown)}
+                            className={cn(
+                                "w-7 h-4 rounded-full relative transition-colors duration-300",
+                                showNetQtyBreakdown ? "bg-emerald-500/80" : "bg-white/10"
+                            )}
+                        >
+                            <div className={cn(
+                                "absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300 shadow-sm",
+                                showNetQtyBreakdown ? "translate-x-3" : "translate-x-0"
+                            )} />
+                        </button>
+                    </div>
+
                     <button onClick={onClearTokens} className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2">
                         <Trash2 size={10} /> Clear
                     </button>
@@ -546,6 +665,7 @@ const VerticalLayout = ({
                                 }}
                                 onUpdateWidth={(w) => onUpdateTokenWidth(token.id, w)}
                                 onClearLogs={onClearLogs}
+                                showNetQtyBreakdown={showNetQtyBreakdown}
                             />
                         );
                     })}

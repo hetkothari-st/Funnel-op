@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const WS_URL = 'ws://115.242.15.134:19101';
 const LOGIN_DATA = {
-    LoginId: "ziptest",
-    Password: "ziptest"
+    LoginId: "ziptestnew",
+    Password: "ziptestnew"
 };
 
 export const useMarketData = (enabled = true, onMessage = null, onDepthPacket = null) => {
