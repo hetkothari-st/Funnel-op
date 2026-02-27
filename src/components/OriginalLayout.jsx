@@ -31,15 +31,22 @@ const OriginalLayout = ({
     onToggleSidebar
 }) => {
     // Local State
-    const [config, setConfig] = useState({
-        index: 'NIFTY',
-        centerStrike: '25800',
-        selectedStrikes: [],
-        type: 'CE',
-        expiry: '',
-        side: 'buy',
-        quantity: 5000
+    const [config, setConfig] = useState(() => {
+        const saved = localStorage.getItem('mt_original_layout_config');
+        return saved ? JSON.parse(saved) : {
+            index: 'NIFTY',
+            centerStrike: '25800',
+            selectedStrikes: [],
+            type: 'CE',
+            expiry: '',
+            side: 'buy',
+            quantity: 5000
+        };
     });
+
+    useEffect(() => {
+        localStorage.setItem('mt_original_layout_config', JSON.stringify(config));
+    }, [config]);
 
     // Dropdown State
     const [isStrikeDropdownOpen, setIsStrikeDropdownOpen] = useState(false);
