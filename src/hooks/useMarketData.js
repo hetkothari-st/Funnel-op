@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const WS_URL = 'ws://115.242.15.134:19101';
 const LOGIN_DATA = {
-    LoginId: "ziptestnew",
-    Password: "ziptestnew"
+    LoginId: "siddhu_bhaiya",
+    Password: "siddhu_bhaiya"
 };
 
 export const useMarketData = (enabled = true, onMessage = null, onDepthPacket = null) => {
@@ -81,6 +81,7 @@ export const useMarketData = (enabled = true, onMessage = null, onDepthPacket = 
                         const indexTokens = [
                             { Tkn: '26000', Xchg: 'NSE' },
                             { Tkn: '26009', Xchg: 'NSE' },
+                            { Tkn: '1', Xchg: 'BSE' }, // SENSEX Spot Token
                             ...allTokens.filter(q => q.Xchg === 'NSE')
                         ].filter((v, i, a) => a.findIndex(t => t.Tkn === v.Tkn) === i); // Deduplicate
 

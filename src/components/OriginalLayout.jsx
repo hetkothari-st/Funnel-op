@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Settings, Bell, Layers, Database, Activity, RefreshCw, ChevronDown, Check, Trash2, X, ArrowUp, ArrowDown, PanelLeftClose } from 'lucide-react';
+import { Settings, Bell, Layers, Database, Activity, RefreshCw, ChevronDown, Check, Trash2, X, ArrowUp, ArrowDown, PanelLeftClose, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -203,6 +203,89 @@ const OriginalLayout = ({
         }
     };
 
+    // Quick Strikes: Add 1 ATM + 2 ITM + 5 OTM for both CE and PE
+    const INDEX_SPOT_MAP = {
+        NIFTY: { tokenId: '26000', step: 50 },
+        BANKNIFTY: { tokenId: '26009', step: 100 },
+        FINNIFTY: { tokenId: '26000', step: 50 },
+        SENSEX: { tokenId: '1', step: 100 },
+    };
+
+    const handleQuickStrikes = () => {
+        const indexInfo = INDEX_SPOT_MAP[config.index];
+        if (!indexInfo) return;
+
+        const { tokenId, step } = indexInfo;
+        const spotPacket = depthData[tokenId];
+        if (!spotPacket) {
+            alert('Spot price not available yet. Wait for market data to load.');
+            return;
+        }
+
+        const spotPrice = parseFloat(spotPacket.Price || spotPacket.iv || spotPacket.ltp || spotPacket.LastTradedPrice || 0);
+        if (!spotPrice) {
+            alert('Could not determine spot price.');
+            return;
+        }
+
+        const atm = Math.round(spotPrice / step) * step;
+        let searchIndex = config.index === 'SENSEX' ? 'BSX' : config.index;
+
+        // CE: ITM = below ATM, OTM = above ATM
+        // PE: ITM = above ATM, OTM = below ATM
+        const ceStrikes = [];
+        const peStrikes = [];
+
+        // 2 ITM for CE (below ATM)
+        for (let i = 2; i >= 1; i--) ceStrikes.push(atm - i * step);
+        // ATM
+        ceStrikes.push(atm);
+        // 5 OTM for CE (above ATM)
+        for (let i = 1; i <= 5; i++) ceStrikes.push(atm + i * step);
+
+        // 2 ITM for PE (above ATM)
+        for (let i = 2; i >= 1; i--) peStrikes.push(atm + i * step);
+        // ATM
+        peStrikes.push(atm);
+        // 5 OTM for PE (below ATM)
+        for (let i = 1; i <= 5; i++) peStrikes.push(atm - i * step);
+
+        const newTokens = [];
+        const addStrike = (strike, type) => {
+            const strikeVal = Number(strike).toFixed(5);
+            const match = contractsData.find(c =>
+                c.s === searchIndex &&
+                Number(c.st).toFixed(5) === strikeVal &&
+                c.p === type &&
+                c.e === config.expiry
+            );
+            if (match) {
+                // Skip if already monitored
+                const alreadyExists = monitoredTokens.some(m => m.tkn === match.t && m.type === type);
+                if (!alreadyExists) {
+                    newTokens.push({
+                        id: `${match.t}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                        tkn: match.t,
+                        symbol: `${config.index} ${strike} ${type}`,
+                        strike: strike.toString(),
+                        type: type,
+                        side: config.side,
+                        quantity: 25000,
+                        expiry: config.expiry,
+                        index: config.index
+                    });
+                }
+            }
+        };
+
+        ceStrikes.forEach(s => addStrike(s, 'CE'));
+        peStrikes.forEach(s => addStrike(s, 'PE'));
+
+        if (newTokens.length > 0) {
+            onAddTokens(newTokens);
+        }
+    };
+
     const handleUpdateStrike = (id, newStrike) => {
         const item = monitoredTokens.find(m => m.id === id);
         if (!item) return;
@@ -336,6 +419,9 @@ const OriginalLayout = ({
                     </div>
 
                     <div className="flex gap-2 ml-auto">
+                        <button onClick={handleQuickStrikes} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1 px-3 rounded text-[10px] h-7 shadow-lg shadow-amber-500/20 flex items-center gap-2" title="Add 1 ATM + 2 ITM + 5 OTM (CE & PE)">
+                            <Zap size={10} /> Quick Strikes
+                        </button>
                         <button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-4 rounded text-[10px] h-7 shadow-lg shadow-blue-500/20 flex items-center gap-2">
                             Add to Monitor
                         </button>

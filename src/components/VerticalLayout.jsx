@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
-import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser } from 'lucide-react';
+import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
@@ -20,6 +20,8 @@ const LogRow = memo(React.forwardRef(({ log, token, side, timeTick }, ref) => {
 
     const isHighQty = log.observedQty >= 90000;
 
+    const isRecent = elapsed <= 60; // <-- ADD THIS LINE
+
     return (
         <motion.div
             ref={ref}
@@ -28,20 +30,26 @@ const LogRow = memo(React.forwardRef(({ log, token, side, timeTick }, ref) => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center justify-between gap-1 text-[13px] leading-tight px-1 py-0.5 rounded hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 overflow-hidden"
+            className={cn(
+                "flex items-center justify-between gap-1 text-[13px] leading-tight px-1 py-0.5 rounded transition-all border-b last:border-0 overflow-hidden",
+                isRecent
+                    ? (isBuy ? "bg-emerald-500/20 border-emerald-500/35 shadow-[0_0_12px_rgba(16,185,129,0.3)]" : "bg-red-500/20 border-red-500/35 shadow-[0_0_12px_rgba(239,68,68,0.3)]")
+                    : "border-white/5 hover:bg-white/5 opacity-70"
+            )}
         >
             {isBuy ? (
                 <>
-                    <span className="text-[10px] text-blue-400 font-bold font-mono whitespace-nowrap shrink-0">{timerStr}</span>
+                    <span className={cn("text-[10px] font-bold font-mono whitespace-nowrap shrink-0", isRecent ? "text-blue-200" : "text-blue-500")}>{timerStr}</span>
                     <span className={cn(
                         "font-mono flex-1 text-center whitespace-nowrap min-w-0 truncate transition-all duration-300",
-                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] tracking-tighter" : "text-emerald-400 font-bold text-[12px]"
+                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] tracking-tighter" :
+                            isRecent ? "text-emerald-300 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "text-emerald-500/80 font-bold text-[14px]"
                     )}>{log.observedQty}</span>
                     <span className={cn(
                         "font-mono whitespace-nowrap shrink-0 text-right transition-all duration-300",
                         isHighQty
-                            ? "text-violet-200 font-black text-[12.5px] drop-shadow-[0_0_12px_rgba(167,139,250,1)]"
-                            : "text-violet-300 font-bold text-[11px]"
+                            ? "text-violet-200 font-black text-[14.5px] drop-shadow-[0_0_12px_rgba(167,139,250,1)]"
+                            : isRecent ? "text-violet-100 font-black text-[13.5px] drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" : "text-violet-400/80 font-bold text-[13px]"
                     )}>{Number(log.price).toFixed(2)}</span>
                 </>
             ) : (
@@ -49,14 +57,15 @@ const LogRow = memo(React.forwardRef(({ log, token, side, timeTick }, ref) => {
                     <span className={cn(
                         "font-mono whitespace-nowrap shrink-0 text-left transition-all duration-300",
                         isHighQty
-                            ? "text-violet-200 font-black text-[12.5px] drop-shadow-[0_0_12px_rgba(167,139,250,1)]"
-                            : "text-violet-300 font-bold text-[11px]"
+                            ? "text-violet-200 font-black text-[14.5px] drop-shadow-[0_0_12px_rgba(167,139,250,1)]"
+                            : isRecent ? "text-violet-100 font-black text-[13.5px] drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" : "text-violet-400/80 font-bold text-[13px]"
                     )}>{Number(log.price).toFixed(2)}</span>
                     <span className={cn(
                         "font-mono flex-1 text-center whitespace-nowrap min-w-0 truncate transition-all duration-300",
-                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] tracking-tighter" : "text-red-400 font-bold text-[12px]"
+                        isHighQty ? "text-amber-400 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] tracking-tighter" :
+                            isRecent ? "text-red-300 font-black text-[14.5px] drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" : "text-red-500/80 font-bold text-[13px]"
                     )}>{log.observedQty}</span>
-                    <span className="text-[10px] text-blue-400 font-bold font-mono whitespace-nowrap shrink-0 text-right">{timerStr}</span>
+                    <span className={cn("text-[10px] font-bold font-mono whitespace-nowrap shrink-0 text-right", isRecent ? "text-blue-200" : "text-blue-500")}>{timerStr}</span>
                 </>
             )}
         </motion.div>
@@ -71,26 +80,52 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
     const columnWidth = token.width || 300;
 
     // Net Quantity Calculation Logic
-    const calculateNetQty = useCallback((side) => {
-        const sideLogs = logs.filter(l => l.side === side && l.observedQty >= 100000);
-        const maxQtyPerPrice = {};
-        sideLogs.forEach(log => {
+    const { netBuyData, netSellData } = useMemo(() => {
+        // --- 1. Buy Side Logic ---
+        const maxBuyQtyPerPrice = {};
+        logs.forEach(log => {
+            if (log.side !== 'buy' || log.observedQty < 25000) return;
             const price = Number(log.price).toFixed(2);
-            if (!maxQtyPerPrice[price] || log.observedQty > maxQtyPerPrice[price]) {
-                maxQtyPerPrice[price] = log.observedQty;
+            if (!maxBuyQtyPerPrice[price] || log.observedQty > maxBuyQtyPerPrice[price]) {
+                maxBuyQtyPerPrice[price] = log.observedQty;
             }
         });
 
-        const breakdown = Object.entries(maxQtyPerPrice)
+        const buyBreakdown = Object.entries(maxBuyQtyPerPrice)
             .map(([price, qty]) => ({ price, qty }))
             .sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
 
-        const total = Object.values(maxQtyPerPrice).reduce((sum, qty) => sum + qty, 0);
-        return { total, breakdown };
-    }, [logs]);
+        const buyTotal = buyBreakdown.reduce((sum, item) => sum + item.qty, 0);
 
-    const netBuyData = useMemo(() => calculateNetQty('buy'), [calculateNetQty]);
-    const netSellData = useMemo(() => calculateNetQty('sell'), [calculateNetQty]);
+        // Find the minimum buy price among the recorded buy levels
+        const buyPriceValues = Object.keys(maxBuyQtyPerPrice).map(Number);
+        const minBuyPrice = buyPriceValues.length > 0 ? Math.min(...buyPriceValues) : Infinity;
+
+        // --- 2. Sell Side Logic (Profitable Trades Only) ---
+        const maxSellQtyPerPrice = {};
+        logs.forEach(log => {
+            if (log.side !== 'sell' || log.observedQty < 25000) return;
+            const price = Number(log.price).toFixed(2);
+
+            // Sell side is only included if price > minBuyPrice (profitable)
+            if (parseFloat(price) > minBuyPrice) {
+                if (!maxSellQtyPerPrice[price] || log.observedQty > maxSellQtyPerPrice[price]) {
+                    maxSellQtyPerPrice[price] = log.observedQty;
+                }
+            }
+        });
+
+        const sellBreakdown = Object.entries(maxSellQtyPerPrice)
+            .map(([price, qty]) => ({ price, qty }))
+            .sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+
+        const sellTotal = sellBreakdown.reduce((sum, item) => sum + item.qty, 0);
+
+        return {
+            netBuyData: { total: buyTotal, breakdown: buyBreakdown },
+            netSellData: { total: sellTotal, breakdown: sellBreakdown }
+        };
+    }, [logs]);
 
     // Resizing Logic
     const handleResizeStart = (e) => {
@@ -344,10 +379,10 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
                                     <span className="text-[10px] font-black text-emerald-400/80">{netBuyData.total.toLocaleString()}</span>
                                 </div>
                                 {netBuyData.breakdown.length === 0 ? (
-                                    <div className="text-[10px] text-white/10 text-center py-2 italic font-medium">No 1L+ Qty</div>
+                                    <div className="text-[10px] text-white/10 text-center py-2 italic font-medium">No 25k+ Qty</div>
                                 ) : (
-                                    netBuyData.breakdown.map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between text-[11px] font-mono group/item">
+                                    netBuyData.breakdown.map((item) => (
+                                        <div key={item.price} className="flex items-center justify-between text-[11px] font-mono group/item">
                                             <span className="text-white/40 group-hover/item:text-white/60 transition-colors">{item.price}</span>
                                             <span className="text-emerald-400/90 font-bold">{item.qty.toLocaleString()}</span>
                                         </div>
@@ -399,10 +434,10 @@ const DraggableColumn = ({ token, isAtm, onDragStateChange, logs, onRemove, onUp
                                     <span className="text-[10px] font-black text-red-400/80">{netSellData.total.toLocaleString()}</span>
                                 </div>
                                 {netSellData.breakdown.length === 0 ? (
-                                    <div className="text-[10px] text-white/10 text-center py-2 italic font-medium">No 1L+ Qty</div>
+                                    <div className="text-[10px] text-white/10 text-center py-2 italic font-medium">No {token.quantity.toLocaleString()}+ Pulses</div>
                                 ) : (
-                                    netSellData.breakdown.map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between text-[11px] font-mono group/item">
+                                    netSellData.breakdown.map((item) => (
+                                        <div key={item.price} className="flex items-center justify-between text-[11px] font-mono group/item">
                                             <span className="text-white/40 group-hover/item:text-white/60 transition-colors">{item.price}</span>
                                             <span className="text-red-400/90 font-bold">{item.qty.toLocaleString()}</span>
                                         </div>
@@ -438,10 +473,11 @@ const VerticalLayout = ({
     // --- Top Bar State (Unchanged) ---
     const [globalIndex, setGlobalIndex] = useState('NIFTY');
     const [globalExpiry, setGlobalExpiry] = useState('');
-    const [atmStrike, setAtmStrike] = useState(null);
+    const [atmStrikes, setAtmStrikes] = useState({});
     const [timeTick, setTimeTick] = useState(0);
     const [showNetQtyBreakdown, setShowNetQtyBreakdown] = useState(false);
     const isDraggingRef = useRef(false);
+    const lastActivitySortRef = useRef(0);
 
     // Live Timer Tick
     useEffect(() => {
@@ -449,67 +485,106 @@ const VerticalLayout = ({
         return () => clearInterval(interval);
     }, []);
 
-    // --- Spot Price & ATM Logic ---
+    // --- Spot Price & ATM Logic (Multi-Index) ---
+    // All known indices and their spot tokens/steps
+    const INDEX_SPOT_MAP = useMemo(() => ({
+        NIFTY: { tokenId: '26000', step: 50 },
+        BANKNIFTY: { tokenId: '26009', step: 100 },
+        SENSEX: { tokenId: '1', step: 100 },
+    }), []);
+
     useEffect(() => {
         // Prevent auto-reorder while user is manually dragging
-        // Using ref check to avoid the "lock re-render" fighting the drag start
         if (isDraggingRef.current) return;
+        if (!depthData) return;
 
-        // 1. Get Spot Token ID based on Global Index
-        let spotTokenId = null;
-        let step = 50; // Default NIFTY Step
+        const newAtmStrikes = { ...atmStrikes }; // Copy previous state so we don't lose indices not updated in this tick
+        let changed = false;
+        let allAtmTokenIds = new Set(); // ATM token ids across ALL indices
 
-        if (globalIndex === 'NIFTY') { spotTokenId = '26000'; step = 50; }
-        else if (globalIndex === 'BANKNIFTY') { spotTokenId = '26009'; step = 100; }
-        // Add others if known, else skip
+        // Compute ATM for every known index
+        Object.entries(INDEX_SPOT_MAP).forEach(([indexName, { tokenId, step }]) => {
+            const spotPacket = depthData[tokenId];
+            if (!spotPacket) return;
 
-        if (!spotTokenId || !depthData || !depthData[spotTokenId]) return;
+            const spotPrice = parseFloat(spotPacket.Price || spotPacket.iv || spotPacket.ltp || spotPacket.LastTradedPrice || 0);
+            if (!spotPrice) return;
 
-        // 2. Get Spot Price
-        // IndexData packet structure usually has 'iv' (Index Value) or similar. 
-        // Based on typical NSE updates, it might be in `Touchline` format or specific `IndexData`.
-        // Let's assume standard `ltp` or `LastTradedPrice` or `iv` is available in the object.
-        // We enabled 'IndexData' flow, so let's inspect what we get. usually it's `LastTradedPrice` or `Close`.
-        // Ideally we check `rt` (Real Time) or `iv`. Let's fallback to `ltp`.
-        const spotPacket = depthData[spotTokenId];
-        // IndexData uses 'Price'. Depth uses 'ltp' or 'iv'.
-        const spotPrice = parseFloat(spotPacket.Price || spotPacket.iv || spotPacket.ltp || spotPacket.LastTradedPrice || 0);
+            const calculatedAtm = Math.round(spotPrice / step) * step;
 
-        if (!spotPrice) {
-            console.log(`[ATM] Spot Price missing for ${globalIndex} (${spotTokenId}):`, spotPacket);
-            return;
-        }
+            if (newAtmStrikes[indexName] !== calculatedAtm) {
+                newAtmStrikes[indexName] = calculatedAtm;
+                changed = true;
+                if (indexName === 'SENSEX') console.log(`[ATM] SENSEX ATM Updated: Spot=${spotPrice}, ATM=${calculatedAtm}`);
+            }
 
-        // 3. Calculate ATM Strike
-        const calculatedAtm = Math.round(spotPrice / step) * step;
+            // Find ATM tokens for this index
+            monitoredTokens.forEach(t => {
+                if (t.index === indexName && parseFloat(t.strike) === calculatedAtm) {
+                    allAtmTokenIds.add(t.id);
+                }
+            });
+        });
 
-        // 4. Update interactions ONLY if ATM changes
-        if (atmStrike !== calculatedAtm) {
-            setAtmStrike(calculatedAtm);
-        }
+        // Update per-index ATM map only when something changed
+        if (changed) setAtmStrikes(newAtmStrikes);
 
-        // 5. Auto-Reorder: Ensure ATM columns (CE & PE) are at front whenever tokens or ATM changes
-        const currentTokens = [...monitoredTokens];
-        const atmTokens = currentTokens.filter(t =>
-            t.index === globalIndex &&
-            parseFloat(t.strike) === calculatedAtm
-        );
+        // Auto-Reorder: move ALL ATM tokens to the front, sort the rest by activity
+        let expectedOrder = [...monitoredTokens]; // Default to current
 
-        if (atmTokens.length > 0) {
-            // Check if all ATM tokens are already grouped at the very front
-            const firstNIds = monitoredTokens.slice(0, atmTokens.length).map(t => t.id);
-            const allAtFront = atmTokens.every(t => firstNIds.includes(t.id));
+        if (monitoredTokens.length > 0) {
+            // Count activity (number of log entries) for each token
+            const recentCounts = {};
+            const totalCounts = {};
+            const now = Date.now();
 
-            if (!allAtFront) {
-                const nonAtmTokens = currentTokens.filter(t =>
-                    !(t.index === globalIndex && parseFloat(t.strike) === calculatedAtm)
-                );
-                // Maintain relative order of ATM tokens (CE/PE) as they were added
-                const newOrder = [...atmTokens, ...nonAtmTokens];
-                onReorderTokens(newOrder); // This updates the parent state
+            // Initialize counts for all tracked tokens
+            monitoredTokens.forEach(t => {
+                recentCounts[t.id] = 0;
+                totalCounts[t.id] = 0;
+            });
+
+            // Calculate Recent and Total Activity
+            logs.forEach(log => {
+                const tId = log.tokenId || log.tkn;
+                if (totalCounts[tId] !== undefined) {
+                    totalCounts[tId]++; // Increment all-time total
+                    // Consider it "recent activity" if it arrived in the last 60 seconds (60000ms)
+                    if (now - (log.timestamp || 0) <= 60000) {
+                        recentCounts[tId]++;
+                    }
+                }
+            });
+
+            // Separate the tokens
+            const atmTokens = monitoredTokens.filter(t => allAtmTokenIds.has(t.id));
+            const nonAtmTokens = monitoredTokens.filter(t => !allAtmTokenIds.has(t.id));
+
+            // Throttle Activity Sorting to prevent rapid jittering (every 5 seconds minimum)
+            if (now - lastActivitySortRef.current > 5000) {
+                // Sort non-ATM tokens by activity descending
+                nonAtmTokens.sort((a, b) => {
+                    // Primary sort: Recent activity (last 60 seconds)
+                    const recentDiff = recentCounts[b.id] - recentCounts[a.id];
+                    if (recentDiff !== 0) return recentDiff;
+
+                    // Secondary sort: Total all-time activity (if recent activity is the same)
+                    return totalCounts[b.id] - totalCounts[a.id];
+                });
+
+                lastActivitySortRef.current = now;
+            }
+
+            // Expected order combines locked ATM columns with sorted active columns
+            expectedOrder = [...atmTokens, ...nonAtmTokens];
+
+            // Check if actual order perfectly matches expected order to avoid infinite loops
+            const isSameOrder = expectedOrder.every((t, i) => t.id === monitoredTokens[i]?.id);
+            if (!isSameOrder) {
+                onReorderTokens(expectedOrder); // Trigger layout animation
             }
         }
-    }, [depthData, globalIndex, monitoredTokens, onReorderTokens, atmStrike]);
+    }, [depthData, INDEX_SPOT_MAP, monitoredTokens, onReorderTokens, atmStrikes, logs]);
 
 
     const availableExpiries = useMemo(() => {
@@ -526,6 +601,73 @@ const VerticalLayout = ({
         }
     }, [availableExpiries, globalExpiry]);
 
+
+    // Quick Strikes: Add 1 ATM + 2 ITM + 5 OTM for both CE and PE
+    const handleQuickStrikes = () => {
+        const indexInfo = INDEX_SPOT_MAP[globalIndex];
+        if (!indexInfo) return;
+
+        const { tokenId, step } = indexInfo;
+        const spotPacket = depthData?.[tokenId];
+        if (!spotPacket) {
+            alert('Spot price not available yet. Wait for market data to load.');
+            return;
+        }
+
+        const spotPrice = parseFloat(spotPacket.Price || spotPacket.iv || spotPacket.ltp || spotPacket.LastTradedPrice || 0);
+        if (!spotPrice) {
+            alert('Could not determine spot price.');
+            return;
+        }
+
+        const atm = Math.round(spotPrice / step) * step;
+        let searchIndex = globalIndex === 'SENSEX' ? 'BSX' : globalIndex;
+
+        const ceStrikes = [];
+        const peStrikes = [];
+
+        // 2 ITM for CE (below ATM) + ATM + 5 OTM (above ATM)
+        for (let i = 2; i >= 1; i--) ceStrikes.push(atm - i * step);
+        ceStrikes.push(atm);
+        for (let i = 1; i <= 5; i++) ceStrikes.push(atm + i * step);
+
+        // 2 ITM for PE (above ATM) + ATM + 5 OTM (below ATM)
+        for (let i = 2; i >= 1; i--) peStrikes.push(atm + i * step);
+        peStrikes.push(atm);
+        for (let i = 1; i <= 5; i++) peStrikes.push(atm - i * step);
+
+        const newTokens = [];
+        const addStrike = (strike, type) => {
+            const strikeVal = Number(strike).toFixed(5);
+            const match = contractsData.find(c =>
+                c.s === searchIndex &&
+                Number(c.st).toFixed(5) === strikeVal &&
+                c.p === type &&
+                c.e === globalExpiry
+            );
+            if (match) {
+                const alreadyExists = monitoredTokens.some(m => m.tkn === match.t && m.type === type);
+                if (!alreadyExists) {
+                    newTokens.push({
+                        id: `${match.t}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                        tkn: match.t,
+                        symbol: `${globalIndex} ${strike} ${type}`,
+                        strike: strike.toString(),
+                        type: type,
+                        side: 'both',
+                        quantity: 25000,
+                        expiry: globalExpiry,
+                        index: globalIndex
+                    });
+                }
+            }
+        };
+
+        ceStrikes.forEach(s => addStrike(s, 'CE'));
+        peStrikes.forEach(s => addStrike(s, 'PE'));
+
+        if (newTokens.length > 0) onAddTokens(newTokens);
+    };
 
     const handleAddColumn = () => {
         let defaultStrike = '24000';
@@ -589,8 +731,15 @@ const VerticalLayout = ({
                     </div>
 
                     <button
+                        onClick={handleQuickStrikes}
+                        className="ml-auto bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 transition-colors"
+                        title="Add 1 ATM + 2 ITM + 5 OTM (CE & PE)"
+                    >
+                        <Zap size={14} /> Quick Strikes
+                    </button>
+                    <button
                         onClick={handleAddColumn}
-                        className="ml-auto bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 transition-colors"
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 transition-colors"
                     >
                         <Plus size={14} /> Add Column
                     </button>
@@ -626,7 +775,7 @@ const VerticalLayout = ({
                     className="flex h-full gap-4 pb-4 w-fit min-w-full" // Use w-fit to ensure scrollbar triggers correctly
                 >
                     {monitoredTokens.map(token => {
-                        const isAtm = token.index === globalIndex && parseFloat(token.strike) === atmStrike;
+                        const isAtm = atmStrikes[token.index] !== undefined && parseFloat(token.strike) === atmStrikes[token.index];
                         return (
                             <DraggableColumn
                                 key={token.id}

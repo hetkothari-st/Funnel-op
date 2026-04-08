@@ -165,7 +165,7 @@ const MonitorDashboard = ({
 
     // --- Direct Audio Link (Low Latency) ---
     useEffect(() => {
-        if (!depthEvents) return;
+        if (!depthEvents || !isActive) return;
 
         const handlePacket = (e) => {
             const packet = e.detail;
@@ -205,7 +205,7 @@ const MonitorDashboard = ({
 
         depthEvents.addEventListener('depth-packet', handlePacket);
         return () => depthEvents.removeEventListener('depth-packet', handlePacket);
-    }, [depthEvents, monitoredTokens]); // Re-bind when monitored list changes
+    }, [depthEvents, monitoredTokens, isActive]); // Re-bind when monitored list changes
 
     // --- Polling & Alert Logic (Visuals Only) ---
     const latestDepthData = useRef(depthData);
@@ -304,8 +304,8 @@ const MonitorDashboard = ({
 
                             setLogs(prev => [{ ...details, id: logId }, ...prev].slice(0, 3000)); // Increased buffer to 3000
 
-                            // Global Notification (still throttled by log logic)
-                            if (observedQty >= item.quantity) {
+                            // Global Notification — only for active monitor
+                            if (observedQty >= item.quantity && isActive) {
                                 addGlobalNotification({ ...details, id: logId });
                             }
                         }
@@ -315,7 +315,7 @@ const MonitorDashboard = ({
         }, 100);
 
         return () => clearInterval(pollInterval);
-    }, [monitoredTokens, showAllPrices, addGlobalNotification, status]);
+    }, [monitoredTokens, showAllPrices, addGlobalNotification, status, isActive]);
 
     // --- Log Retention & Cleanup ---
     useEffect(() => {
