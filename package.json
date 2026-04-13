@@ -5,12 +5,15 @@
     "type": "module",
     "scripts": {
         "dev": "python scripts/parse_contracts.py && vite",
-        "start": "vite",
+        "dev:vite": "vite",
+        "start": "node server/index.js",
         "build": "vite build",
         "preview": "vite preview"
     },
     "dependencies": {
         "axios": "^1.6.0",
+        "express": "^4.19.2",
+        "ws": "^8.18.0",
         "clsx": "^2.0.0",
         "framer-motion": "^10.16.4",
         "lucide-react": "^0.292.0",

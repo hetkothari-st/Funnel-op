@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Database, Plus, Trash2, LayoutGrid, Monitor, Eye, EyeOff, CheckSquare, Square, PanelLeftClose, PanelLeft, Columns } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMarketData } from './hooks/useMarketData';
@@ -6,12 +6,28 @@ import MonitorDashboard from './components/MonitorDashboard';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import logo from '/Doc1-removebg-preview.png';
+import { useAuth, buildWsCredential } from './auth/AuthContext';
+import LoginPage from './auth/LoginPage';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
 
 const App = () => {
+    const { user, logout } = useAuth();
+    const wsCredential = buildWsCredential(user);
+
+    // --- Market Auto-Reconnect on market open ---
+    const prevMarketOpenRef = useRef(false);
+    const isMarketOpen = () => {
+        const now = new Date();
+        const day = now.getDay();
+        if (day === 0 || day === 6) return false;
+        const mins = now.getHours() * 60 + now.getMinutes();
+        return mins >= 555 && mins <= 930; // 9:15 AM - 3:30 PM IST
+    };
+
+    if (!user) return <LoginPage />;
     // --- Global State ---
     const [debugLogs, setDebugLogs] = useState([]);
 
@@ -90,7 +106,21 @@ const App = () => {
         depthEvents.current.dispatchEvent(new CustomEvent('depth-packet', { detail: packet }));
     }, []);
 
-    const { status, depthData, subscribe } = useMarketData(isWsEnabled, handleRawMessage, handleDepthPacket);
+    const { status, depthData, subscribe } = useMarketData(isWsEnabled, handleRawMessage, handleDepthPacket, wsCredential);
+
+    // --- Market Auto-Reconnect ---
+    useEffect(() => {
+        const check = setInterval(() => {
+            const open = isMarketOpen();
+            if (open && !prevMarketOpenRef.current && !isWsEnabled) {
+                console.log('[App] Market opened, auto-reconnecting WS');
+                localStorage.setItem('mt_ws_auto_reconnect', 'true');
+                setIsWsEnabled(true);
+            }
+            prevMarketOpenRef.current = open;
+        }, 30000);
+        return () => clearInterval(check);
+    }, [isWsEnabled]);
 
     // --- Global Notification Logic ---
     const addGlobalNotification = useCallback((details) => {
@@ -200,17 +230,25 @@ const App = () => {
                                     status === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-danger')} />
                             <span>{status.toUpperCase()}</span>
                         </div>
-                        <button
-                            onClick={() => setIsWsEnabled(!isWsEnabled)}
-                            className={cn(
-                                "text-[9px] px-2 py-0.5 rounded-full border transition-all font-bold uppercase tracking-wider",
-                                isWsEnabled
-                                    ? "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
-                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
-                            )}
-                        >
-                            {isWsEnabled ? "Disconnect" : "Connect"}
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setIsWsEnabled(!isWsEnabled)}
+                                className={cn(
+                                    "text-[9px] px-2 py-0.5 rounded-full border transition-all font-bold uppercase tracking-wider",
+                                    isWsEnabled
+                                        ? "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
+                                        : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                                )}
+                            >
+                                {isWsEnabled ? "Disconnect" : "Connect"}
+                            </button>
+                            <button
+                                onClick={logout}
+                                className="text-[9px] px-2 py-0.5 rounded-full border bg-white/5 text-white/40 border-white/10 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/20 transition-all font-bold uppercase tracking-wider"
+                            >
+                                Logout
+                            </button>
+                        </div>
                     </div>
                 </div>
 
