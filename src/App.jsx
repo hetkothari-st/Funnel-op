@@ -27,7 +27,6 @@ const App = () => {
         return mins >= 555 && mins <= 930; // 9:15 AM - 3:30 PM IST
     };
 
-    if (!user) return <LoginPage />;
     // --- Global State ---
     const [debugLogs, setDebugLogs] = useState([]);
 
@@ -189,6 +188,8 @@ const App = () => {
     // Sidebar Visibility Logic
     // Controlled by sidebarCollapsed in both modes
     const isSidebarVisible = !sidebarCollapsed;
+
+    if (!user) return <LoginPage />;
 
     return (
         <div className="min-h-screen bg-[#050505] text-white flex h-screen overflow-hidden font-sans selection:bg-blue-500/30">
