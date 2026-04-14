@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Database, Plus, Trash2, LayoutGrid, Monitor, Eye, EyeOff, CheckSquare, Square, PanelLeftClose, PanelLeft, Columns } from 'lucide-react';
+import { Database, Plus, Trash2, LayoutGrid, Monitor, Eye, EyeOff, CheckSquare, Square, PanelLeftClose, PanelLeft, Columns, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMarketData } from './hooks/useMarketData';
 import MonitorDashboard from './components/MonitorDashboard';
@@ -231,25 +231,17 @@ const App = () => {
                                     status === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-danger')} />
                             <span>{status.toUpperCase()}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setIsWsEnabled(!isWsEnabled)}
-                                className={cn(
-                                    "text-[9px] px-2 py-0.5 rounded-full border transition-all font-bold uppercase tracking-wider",
-                                    isWsEnabled
-                                        ? "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
-                                        : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
-                                )}
-                            >
-                                {isWsEnabled ? "Disconnect" : "Connect"}
-                            </button>
-                            <button
-                                onClick={logout}
-                                className="text-[9px] px-2 py-0.5 rounded-full border bg-white/5 text-white/40 border-white/10 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/20 transition-all font-bold uppercase tracking-wider"
-                            >
-                                Logout
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setIsWsEnabled(!isWsEnabled)}
+                            className={cn(
+                                "text-[9px] px-2 py-0.5 rounded-full border transition-all font-bold uppercase tracking-wider",
+                                isWsEnabled
+                                    ? "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
+                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                            )}
+                        >
+                            {isWsEnabled ? "Disconnect" : "Connect"}
+                        </button>
                     </div>
                 </div>
 
@@ -382,6 +374,25 @@ const App = () => {
                                 {currentSettings[item.id] ? <Eye size={14} className="text-blue-400" /> : <EyeOff size={14} className="text-white/20" />}
                             </button>
                         ))}
+                    </div>
+                </div>
+
+                {/* User chip + logout */}
+                <div className="p-3 border-t border-white/5">
+                    <div className="flex items-center gap-2 bg-white/[0.04] border border-white/10 rounded-lg h-9 px-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-[10px] font-black text-blue-300 flex-shrink-0">
+                            {(user.name || user.email || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-[10px] font-bold text-white/60 truncate flex-1" title={user.email}>
+                            {user.name || user.email}
+                        </span>
+                        <button
+                            onClick={logout}
+                            title="Sign out"
+                            className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-red-400 transition-colors flex-shrink-0"
+                        >
+                            <LogOut size={12} />
+                        </button>
                     </div>
                 </div>
             </aside>
