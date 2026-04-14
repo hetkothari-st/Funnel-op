@@ -88,11 +88,8 @@ app.post('/api/login', async (req, res) => {
 
     const existing = activeSessions.get(username);
     if (existing) {
-        console.log(`[auth] Login BLOCKED for ${username}: already has active session`);
-        return res.json({
-            ok: false,
-            error: 'This account is already logged in from another session. Please log out there first.',
-        });
+        console.log(`[auth] Replacing existing session for ${username}`);
+        activeSessions.delete(username);
     }
 
     const sessionToken = generateSessionToken();
@@ -126,6 +123,17 @@ app.get('/api/active-sessions', (req, res) => {
         });
     }
     return res.json({ count: sessions.length, sessions });
+});
+
+app.post('/api/validate-session', (req, res) => {
+    const { sessionToken } = req.body || {};
+    if (!sessionToken) return res.json({ ok: false });
+    for (const [username, session] of activeSessions) {
+        if (session.sessionToken === sessionToken) {
+            return res.json({ ok: true, user: { username } });
+        }
+    }
+    return res.json({ ok: false });
 });
 
 app.post('/api/force-logout', (req, res) => {

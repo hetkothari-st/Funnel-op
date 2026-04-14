@@ -46,6 +46,27 @@ export function AuthProvider({ children }) {
         } catch {}
     }, [sessionToken]);
 
+    // On page load, validate stored session with server
+    // If server lost the session (redeploy), clear stale client state
+    useEffect(() => {
+        if (!sessionToken || !user) return;
+        fetch('/api/validate-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionToken }),
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) {
+                    console.log('[auth] Stored session no longer valid on server, clearing');
+                    setUserNamespace(null);
+                    setUser(null);
+                    setSessionToken(null);
+                }
+            })
+            .catch(() => {}); // server unreachable, keep local state
+    }, []); // run once on mount
+
     const login = useCallback((u, token) => {
         if (u?.email) setUserNamespace(u.email);
         setUser(u);
