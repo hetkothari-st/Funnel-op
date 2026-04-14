@@ -5,11 +5,12 @@
 /* Override browser autofill background on dark theme */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px rgba(10, 10, 14, 1) inset !important;
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
   -webkit-text-fill-color: #fff !important;
   caret-color: #fff;
-  transition: background-color 5000s ease-in-out 0s;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
 }
 
 :root {
