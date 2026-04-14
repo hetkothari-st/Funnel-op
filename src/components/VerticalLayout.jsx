@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
-import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser, Zap } from 'lucide-react';
+import { Plus, Trash2, X, ChevronDown, Check, GripVertical, Eraser, Zap, LogOut } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
@@ -468,7 +468,9 @@ const VerticalLayout = ({
     onReorderTokens, // Destructure new prop
     isSidebarVisible, // New prop
     depthData, // Need depthData to get Spot Prices
-    onClearLogs // New prop
+    onClearLogs, // New prop
+    user,
+    onLogout
 }) => {
     // --- Top Bar State (Unchanged) ---
     const [globalIndex, setGlobalIndex] = useState('NIFTY');
@@ -763,6 +765,22 @@ const VerticalLayout = ({
                     <button onClick={onClearTokens} className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2">
                         <Trash2 size={10} /> Clear
                     </button>
+
+                    <div className="ml-4 flex items-center gap-1.5 bg-white/[0.04] border border-white/10 rounded h-7 pl-1.5 pr-1">
+                        <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-[9px] font-black text-blue-300">
+                            {(user?.name || user?.email || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-[10px] font-bold text-white/60 max-w-[80px] truncate">
+                            {user?.name || user?.email}
+                        </span>
+                        <button
+                            onClick={onLogout}
+                            title="Sign out"
+                            className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-red-400 transition-colors"
+                        >
+                            <LogOut size={11} />
+                        </button>
+                    </div>
                 </div>
             )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Database, Plus, Trash2, LayoutGrid, Monitor, Eye, EyeOff, CheckSquare, Square, PanelLeftClose, PanelLeft, Columns, LogOut } from 'lucide-react';
+import { Database, Plus, Trash2, LayoutGrid, Monitor, Eye, EyeOff, CheckSquare, Square, PanelLeftClose, PanelLeft, Columns } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMarketData } from './hooks/useMarketData';
 import MonitorDashboard from './components/MonitorDashboard';
@@ -381,22 +381,6 @@ const App = () => {
 
             {/* --- MAIN CONTENT --- */}
             <main className="flex-1 relative overflow-hidden bg-[#050505] p-3">
-                {/* User chip — top right */}
-                <div className="absolute top-3 right-3 z-50 flex items-center gap-1.5 bg-white/[0.04] border border-white/10 rounded h-8 pl-1 pr-1">
-                    <div className="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-[10px] font-black text-blue-300">
-                        {(user.name || user.email || '?').charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-[10px] font-bold text-white/60 max-w-[110px] truncate" title={user.email}>
-                        {user.name || user.email}
-                    </span>
-                    <button
-                        onClick={logout}
-                        title="Sign out"
-                        className="ml-1 p-1 rounded hover:bg-white/10 text-white/40 hover:text-red-400 transition-colors"
-                    >
-                        <LogOut size={12} />
-                    </button>
-                </div>
                 {monitors.map(m => (
                     <MonitorDashboard
                         key={m.id}
@@ -413,6 +397,8 @@ const App = () => {
                         depthEvents={depthEvents.current} // Pass Event Bus
                         isSidebarVisible={isSidebarVisible} // Pass Sidebar State
                         onToggleSidebar={setSidebarCollapsed} // Pass Sidebar Toggle
+                        user={user}
+                        onLogout={logout}
                     />
                 ))}
             </main>
