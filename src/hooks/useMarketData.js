@@ -56,6 +56,15 @@ export const useMarketData = (enabled = true, onMessage = null, onDepthPacket = 
     }, [onMessage, onDepthPacket, enabled, wsCredential]);
 
     const connect = useCallback(() => {
+        // Always reset session flags so the NEW socket is guaranteed to go
+        // through activation (send TokenRequest on first msg). Without this,
+        // if the old socket's onclose never fires (we just nulled it below),
+        // isReady stays true and the new connection silently skips
+        // resubscribing — only broadcast IndexData flows and stock MarketData
+        // never arrives.
+        isReady.current = false;
+        isLoggedIn.current = false;
+
         if (ws.current) {
             ws.current.onclose = null;
             ws.current.close();
@@ -264,15 +273,27 @@ export const useMarketData = (enabled = true, onMessage = null, onDepthPacket = 
             });
 
             if (staleQuotes.length > 0 && isReady.current) {
-                console.warn('[WS] Watchdog resubscribing to stale tokens:', staleQuotes.length);
-                ws.current.send(JSON.stringify({
-                    Type: "TokenRequest",
-                    Data: {
-                        SubType: true,
-                        FeedType: 2,
-                        quotes: staleQuotes
-                    }
-                }));
+                // Split stale quotes by their ORIGINAL FeedType. NSEFO/BSEFO
+                // were subscribed as FT2 (Depth); everything else (NSE/BSE
+                // cash + indices) was subscribed as FT1 (Touchline/Index).
+                // Sending all of them on FT2 was overwriting the FT1 stream
+                // and silently killing MarketData for the stock list.
+                const depthStale = staleQuotes.filter(q => q.Xchg === 'NSEFO' || q.Xchg === 'BSEFO');
+                const indexStale = staleQuotes.filter(q => q.Xchg !== 'NSEFO' && q.Xchg !== 'BSEFO');
+                console.warn('[WS] Watchdog resubscribing to stale tokens:', staleQuotes.length,
+                    `(FT1: ${indexStale.length}, FT2: ${depthStale.length})`);
+                if (indexStale.length > 0) {
+                    ws.current.send(JSON.stringify({
+                        Type: "TokenRequest",
+                        Data: { SubType: true, FeedType: 1, quotes: indexStale }
+                    }));
+                }
+                if (depthStale.length > 0) {
+                    ws.current.send(JSON.stringify({
+                        Type: "TokenRequest",
+                        Data: { SubType: true, FeedType: 2, quotes: depthStale }
+                    }));
+                }
             }
         }, 5000);
 

@@ -104,13 +104,30 @@ export function useAuth() {
     return ctx;
 }
 
+// WS credential — Supabase username + a RANDOM 4-char suffix persisted in
+// sessionStorage. The broker enforces "one active session per LoginId", so
+// sharing the same username across apps (Funnel EQ / OP / ROC) must NOT yield
+// the same LoginId or the broker kicks sessions in a ping-pong. sessionStorage
+// is per-tab: a refresh keeps the suffix (so reconnects don't fight each
+// other), but a new tab / different app gets a fresh suffix.
 export function buildWsCredential(user) {
     if (!user) return null;
     const name = user.name || (user.email && user.email.split('@')[0]) || 'user';
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+    const KEY = 'ws_cred_suffix_v1';
+    let suffix = null;
+    try { suffix = sessionStorage.getItem(KEY); } catch {}
+    if (!suffix || suffix.length !== 4) {
+        const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const rand = new Array(4);
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            const buf = new Uint32Array(4);
+            crypto.getRandomValues(buf);
+            for (let i = 0; i < 4; i++) rand[i] = alphabet[buf[i] % alphabet.length];
+        } else {
+            for (let i = 0; i < 4; i++) rand[i] = alphabet[Math.floor(Math.random() * alphabet.length)];
+        }
+        suffix = rand.join('');
+        try { sessionStorage.setItem(KEY, suffix); } catch {}
     }
-    const suffix = Math.abs(hash).toString(36).slice(0, 4).padEnd(4, '0');
     return `${name}_${suffix}`;
 }
