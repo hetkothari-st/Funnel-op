@@ -205,7 +205,7 @@ const OriginalLayout = ({
         }
     };
 
-    // Quick Strikes: Add 1 ATM + 2 ITM + 5 OTM for both CE and PE
+    // Quick Strikes: Add 1 ATM + 3 ITM + 3 OTM for both CE and PE
     const INDEX_SPOT_MAP = {
         NIFTY: { tokenId: '26000', step: 50 },
         BANKNIFTY: { tokenId: '26009', step: 100 },
@@ -238,19 +238,19 @@ const OriginalLayout = ({
         const ceStrikes = [];
         const peStrikes = [];
 
-        // 2 ITM for CE (below ATM)
-        for (let i = 2; i >= 1; i--) ceStrikes.push(atm - i * step);
+        // 3 ITM for CE (below ATM)
+        for (let i = 3; i >= 1; i--) ceStrikes.push(atm - i * step);
         // ATM
         ceStrikes.push(atm);
-        // 5 OTM for CE (above ATM)
-        for (let i = 1; i <= 5; i++) ceStrikes.push(atm + i * step);
+        // 3 OTM for CE (above ATM)
+        for (let i = 1; i <= 3; i++) ceStrikes.push(atm + i * step);
 
-        // 2 ITM for PE (above ATM)
-        for (let i = 2; i >= 1; i--) peStrikes.push(atm + i * step);
+        // 3 ITM for PE (above ATM)
+        for (let i = 3; i >= 1; i--) peStrikes.push(atm + i * step);
         // ATM
         peStrikes.push(atm);
-        // 5 OTM for PE (below ATM)
-        for (let i = 1; i <= 5; i++) peStrikes.push(atm - i * step);
+        // 3 OTM for PE (below ATM)
+        for (let i = 1; i <= 3; i++) peStrikes.push(atm - i * step);
 
         const newTokens = [];
         const addStrike = (strike, type) => {
@@ -421,7 +421,7 @@ const OriginalLayout = ({
                     </div>
 
                     <div className="flex gap-2 ml-auto">
-                        <button onClick={handleQuickStrikes} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1 px-3 rounded text-[10px] h-7 shadow-lg shadow-amber-500/20 flex items-center gap-2" title="Add 1 ATM + 2 ITM + 5 OTM (CE & PE)">
+                        <button onClick={handleQuickStrikes} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1 px-3 rounded text-[10px] h-7 shadow-lg shadow-amber-500/20 flex items-center gap-2" title="Add 1 ATM + 3 ITM + 3 OTM (CE & PE)">
                             <Zap size={10} /> Quick Strikes
                         </button>
                         <button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-4 rounded text-[10px] h-7 shadow-lg shadow-blue-500/20 flex items-center gap-2">

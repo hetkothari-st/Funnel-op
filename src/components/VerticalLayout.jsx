@@ -604,7 +604,7 @@ const VerticalLayout = ({
     }, [availableExpiries, globalExpiry]);
 
 
-    // Quick Strikes: Add 1 ATM + 2 ITM + 5 OTM for both CE and PE
+    // Quick Strikes: Add 1 ATM + 3 ITM + 3 OTM for both CE and PE
     const handleQuickStrikes = () => {
         const indexInfo = INDEX_SPOT_MAP[globalIndex];
         if (!indexInfo) return;
@@ -628,15 +628,15 @@ const VerticalLayout = ({
         const ceStrikes = [];
         const peStrikes = [];
 
-        // 2 ITM for CE (below ATM) + ATM + 5 OTM (above ATM)
-        for (let i = 2; i >= 1; i--) ceStrikes.push(atm - i * step);
+        // 3 ITM for CE (below ATM) + ATM + 3 OTM (above ATM)
+        for (let i = 3; i >= 1; i--) ceStrikes.push(atm - i * step);
         ceStrikes.push(atm);
-        for (let i = 1; i <= 5; i++) ceStrikes.push(atm + i * step);
+        for (let i = 1; i <= 3; i++) ceStrikes.push(atm + i * step);
 
-        // 2 ITM for PE (above ATM) + ATM + 5 OTM (below ATM)
-        for (let i = 2; i >= 1; i--) peStrikes.push(atm + i * step);
+        // 3 ITM for PE (above ATM) + ATM + 3 OTM (below ATM)
+        for (let i = 3; i >= 1; i--) peStrikes.push(atm + i * step);
         peStrikes.push(atm);
-        for (let i = 1; i <= 5; i++) peStrikes.push(atm - i * step);
+        for (let i = 1; i <= 3; i++) peStrikes.push(atm - i * step);
 
         const newTokens = [];
         const addStrike = (strike, type) => {
@@ -735,7 +735,7 @@ const VerticalLayout = ({
                     <button
                         onClick={handleQuickStrikes}
                         className="ml-auto bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 transition-colors"
-                        title="Add 1 ATM + 2 ITM + 5 OTM (CE & PE)"
+                        title="Add 1 ATM + 3 ITM + 3 OTM (CE & PE)"
                     >
                         <Zap size={14} /> Quick Strikes
                     </button>
