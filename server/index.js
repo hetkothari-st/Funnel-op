@@ -2,8 +2,15 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import crypto from 'crypto';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
+import {
+    recordAlerts,
+    getWorkbookPath,
+    finalizeExport,
+    getISTDateString,
+} from './alertRecorder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,6 +152,64 @@ app.post('/api/force-logout', (req, res) => {
         return res.json({ ok: true, message: `${username} has been logged out.` });
     }
     return res.json({ ok: false, error: `${username} has no active session.` });
+});
+
+// ===================== ALERT EXPORT =====================
+function resolveUsernameByToken(sessionToken) {
+    if (!sessionToken) return null;
+    for (const [username, session] of activeSessions) {
+        if (session.sessionToken === sessionToken) return username;
+    }
+    return null;
+}
+
+app.post('/api/alerts/record', express.json({ limit: '10mb' }), async (req, res) => {
+    const { sessionToken, monitorId, alerts } = req.body || {};
+    const username = resolveUsernameByToken(sessionToken);
+    if (!username) return res.json({ ok: false, error: 'unauthorized' });
+    if (!Array.isArray(alerts)) return res.json({ ok: false, error: 'invalid payload' });
+    try {
+        const result = await recordAlerts(username, monitorId ?? 0, alerts);
+        return res.json({ ok: true, appended: result.appended });
+    } catch (err) {
+        console.error('[alerts/record]', err.message);
+        return res.json({ ok: false, error: err.message });
+    }
+});
+
+app.get('/api/alerts/download', async (req, res) => {
+    const { token: sessionToken, date } = req.query || {};
+    const username = resolveUsernameByToken(sessionToken);
+    if (!username) return res.status(401).json({ error: 'unauthorized' });
+
+    const targetDate = (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date))
+        ? date
+        : getISTDateString();
+    try {
+        await finalizeExport(username, targetDate);
+    } catch (err) {
+        console.warn('[alerts/download] finalize warning:', err.message);
+    }
+    const filepath = getWorkbookPath(username, targetDate);
+    try {
+        await fs.access(filepath);
+    } catch {
+        return res.status(404).json({ error: 'No alert export found for this date.' });
+    }
+    return res.download(filepath, `alerts_${targetDate}_${username}.xlsx`);
+});
+
+app.post('/api/alerts/trigger-export', async (req, res) => {
+    const { sessionToken, date } = req.body || {};
+    const username = resolveUsernameByToken(sessionToken);
+    if (!username) return res.json({ ok: false, error: 'unauthorized' });
+    try {
+        const filepath = await finalizeExport(username, date);
+        return res.json({ ok: true, filename: path.basename(filepath) });
+    } catch (err) {
+        console.error('[alerts/trigger-export]', err.message);
+        return res.json({ ok: false, error: err.message });
+    }
 });
 
 app.get('*', (req, res) => {

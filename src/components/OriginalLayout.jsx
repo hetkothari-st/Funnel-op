@@ -30,7 +30,8 @@ const OriginalLayout = ({
     isSidebarVisible,
     onToggleSidebar,
     user,
-    onLogout
+    onLogout,
+    onDownloadExport
 }) => {
     // Local State
     const [config, setConfig] = useState(() => {
@@ -429,6 +430,14 @@ const OriginalLayout = ({
                         </button>
                         <button onClick={onClearTokens} className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2">
                             <Trash2 size={10} /> Clear
+                        </button>
+
+                        <button
+                            onClick={onDownloadExport}
+                            title="Download today's alerts as Excel"
+                            className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 font-bold py-1 px-3 rounded text-[10px] h-7 flex items-center gap-2"
+                        >
+                            <Database size={10} /> Export XLS
                         </button>
 
                         <div className="ml-4 flex items-center gap-1.5 bg-white/[0.04] border border-white/10 rounded h-7 pl-1.5 pr-1">

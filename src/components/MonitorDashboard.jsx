@@ -4,6 +4,8 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import OriginalLayout from './OriginalLayout';
 import VerticalLayout from './VerticalLayout';
+import { useAlertRecorder } from '../hooks/useAlertRecorder';
+import { useAuth } from '../auth/AuthContext';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -131,6 +133,10 @@ const MonitorDashboard = ({
         return saved ? JSON.parse(saved) : [];
     });
 
+    // --- Alert Recording (server-side persistent log → Excel) ---
+    const { sessionToken } = useAuth();
+    const { recordAlert } = useAlertRecorder(sessionToken, id);
+
     // --- Logic Configuration State ---
     const [showAllPrices, setShowAllPrices] = useState(() => {
         const saved = localStorage.getItem(`mt_show_all_prices_${id}`);
@@ -256,6 +262,25 @@ const MonitorDashboard = ({
                         const price = internalSide === 'bid' ? matchingDepth.BP : matchingDepth.SP;
                         const priceVal = parseFloat(price);
 
+                        // --- SERVER RECORDING (independent of showAllPrices filter) ---
+                        // Use packet receipt time (depth._receivedAt) so the same physical
+                        // depth packet observed across multiple 100ms polls produces the
+                        // same dedup key. Falls back to Date.now() only if missing.
+                        if (observedQty >= item.quantity) {
+                            recordAlert({
+                                tokenId: item.id,
+                                index: item.index,
+                                strike: item.strike,
+                                type: item.type,
+                                symbol: item.symbol || `${item.index} ${item.strike} ${item.type}`,
+                                side,
+                                price: String(price),
+                                observedQty,
+                                thresholdQty: item.quantity,
+                                timestamp: depth._receivedAt || Date.now(),
+                            });
+                        }
+
                         if (!showAllPrices) {
                             const isWholeNumber = priceVal % 1 === 0;
                             if (isWholeNumber && priceVal % 5 === 0) return;
@@ -317,7 +342,7 @@ const MonitorDashboard = ({
         }, 100);
 
         return () => clearInterval(pollInterval);
-    }, [monitoredTokens, showAllPrices, addGlobalNotification, status, isActive]);
+    }, [monitoredTokens, showAllPrices, addGlobalNotification, status, isActive, recordAlert]);
 
     // --- Log Retention & Cleanup ---
     useEffect(() => {
@@ -358,6 +383,51 @@ const MonitorDashboard = ({
         return () => clearInterval(cleanupInterval);
     }, []);
 
+
+    // --- 3:30 PM IST Auto-Export ---
+    const autoExportFiredDateRef = useRef(null);
+    useEffect(() => {
+        if (!isActive) return;
+        const check = setInterval(() => {
+            const now = Date.now();
+            const ist = new Date(now + 5.5 * 3600 * 1000);
+            const day = ist.getUTCDay();
+            if (day === 0 || day === 6) return;
+            const h = ist.getUTCHours();
+            const m = ist.getUTCMinutes();
+            const dateKey = `${ist.getUTCFullYear()}-${ist.getUTCMonth() + 1}-${ist.getUTCDate()}`;
+            const isClose = h === 15 && m >= 30 && m <= 35;
+            if (isClose && autoExportFiredDateRef.current !== dateKey && sessionToken) {
+                autoExportFiredDateRef.current = dateKey;
+                fetch('/api/alerts/trigger-export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionToken }),
+                })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d?.ok) console.log('[export] Auto-export at 15:30 IST:', d.filename);
+                        else console.warn('[export] Auto-export failed:', d?.error);
+                    })
+                    .catch(e => console.warn('[export] Auto-export error:', e.message));
+            }
+        }, 30000);
+        return () => clearInterval(check);
+    }, [isActive, sessionToken]);
+
+    const handleDownloadExport = useCallback(() => {
+        if (!sessionToken) {
+            console.warn('[export] No session token, cannot download');
+            return;
+        }
+        const ist = new Date(Date.now() + 5.5 * 3600 * 1000);
+        const y = ist.getUTCFullYear();
+        const mo = String(ist.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(ist.getUTCDate()).padStart(2, '0');
+        const date = `${y}-${mo}-${d}`;
+        const url = `/api/alerts/download?token=${encodeURIComponent(sessionToken)}&date=${date}`;
+        window.open(url, '_blank');
+    }, [sessionToken]);
 
     // --- Handlers ---
 
@@ -448,6 +518,7 @@ const MonitorDashboard = ({
                     onToggleSidebar={onToggleSidebar}
                     user={user}
                     onLogout={onLogout}
+                    onDownloadExport={handleDownloadExport}
                 />
             ) : (
                 <VerticalLayout
@@ -469,6 +540,7 @@ const MonitorDashboard = ({
                     depthData={depthData}
                     user={user}
                     onLogout={onLogout}
+                    onDownloadExport={handleDownloadExport}
                 />
             )}
         </div>
